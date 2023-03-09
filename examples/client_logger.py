@@ -12,6 +12,7 @@
 #
 # Contributors:
 #    James Myatt - initial implementation
+#burcu
 
 # This shows a simple example of standard logging with an MQTT subscriber client.
 
