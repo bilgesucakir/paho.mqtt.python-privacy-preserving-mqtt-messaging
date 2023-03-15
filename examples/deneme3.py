@@ -18,7 +18,7 @@ def on_message(client, obj, msg):
     print(msg.topic+" "+str(msg.qos)+" "+str(msg.payload))
  
 Connected = False 
-broker_address = "127.0.0.1"
+broker_address = "192.168.1.20"
 client = mqtt.Client("P11")
 client.on_connect = on_connect
 client.on_publish = on_publish
