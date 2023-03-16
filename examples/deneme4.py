@@ -11,7 +11,7 @@ def connect_mqtt() -> mqtt_client:
 
     client = mqtt_client.Client("p3")
     client.on_connect = on_connect
-    client.connect("127.0.0.1")
+    client.connect("172.20.10.2")
     return client
 
 def subscribe(client: mqtt_client):
