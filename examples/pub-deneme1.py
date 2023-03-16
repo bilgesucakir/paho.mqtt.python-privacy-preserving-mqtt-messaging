@@ -2,6 +2,7 @@
 import paho.mqtt.client as mqtt
 
 client = mqtt.Client()
+#client = mqtt.Client(client_id="client1") #should be tried with given client id
 client.connect('127.0.0.1', 1883)
 
 dontStop = True
