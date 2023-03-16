@@ -14,8 +14,6 @@ def on_connect(client, userdata, flags, rc):
 def on_publish(client, obj, mid):
     print("mid: "+str(mid))
 
-def on_message(client, obj, msg):
-    print(msg.topic+" "+str(msg.qos)+" "+str(msg.payload))
  
 Connected = False 
 broker_address = "127.0.0.1"
