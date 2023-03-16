@@ -4,5 +4,19 @@ import paho.mqtt.client as mqtt
 client = mqtt.Client()
 client.connect('127.0.0.1', 1883)
 
+dontStop = True
+
+
 while True:
-    client.publish("topic/test", input('Message : '))
+    if dontStop:
+        while dontStop:
+            inp = input('Message (write stopInput to exit): ')
+            if inp != "stopInput":
+                client.publish("topic/test", inp)
+            else:
+                dontStop = False
+    else:
+        inp2 = input("Do you wish to continue publishing? (Y/n)")
+
+        if inp2 == "Y":
+            dontStop = True
