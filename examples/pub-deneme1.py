@@ -7,8 +7,8 @@ client.connect('127.0.0.1', 1883)
 
 dontStop = True
 
-
-while True:
+inp2 = "Y"
+while inp2 == "Y":
     if dontStop:
         while dontStop:
             inp = input('Message (write stopInput to exit): ')
@@ -21,3 +21,4 @@ while True:
 
         if inp2 == "Y":
             dontStop = True
+        
