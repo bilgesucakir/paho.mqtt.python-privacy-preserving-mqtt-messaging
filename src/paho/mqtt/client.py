@@ -384,7 +384,7 @@ class MQTTMessageInfo(object):
             return self._published
 
 
-class MQTTMessage(object):
+class MQTTMessage(object): #members can be added if necessary here
     """ This is a class that describes an incoming or outgoing message. It is
     passed to the on_message callback as the message parameter.
 
