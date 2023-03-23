@@ -4,6 +4,8 @@ import random
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import dh
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 
 def connect_mqtt(id_client) -> mqtt:
@@ -31,9 +33,11 @@ def publish(client: mqtt) -> mqtt:
 def subscribe(client: mqtt, id_client):
     def on_message(client, userdata, msg):
         print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+        print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
 
     client.subscribe(id_client, 2)
     client.on_message = on_message
+    return client
 
 
 
@@ -50,6 +54,8 @@ def run():
     id_client = str(random.randint(0, 100000000))
     client = connect_mqtt(id_client)
     subscribe(client, id_client)
+    logger = logging.getLogger(__name__)
+    client.enable_logger(logger)
     client.loop_forever()
 
 
