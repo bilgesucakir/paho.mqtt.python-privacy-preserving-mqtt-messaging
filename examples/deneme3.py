@@ -17,7 +17,7 @@ def on_publish(client, obj, mid):
  
 Connected = False 
 broker_address = "127.0.0.1"
-client = mqtt.Client("uniqueClientId")
+client = mqtt.Client(client_id="Client123",  clean_session=True)
 client.on_connect = on_connect
 client.on_publish = on_publish
 
