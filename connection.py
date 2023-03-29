@@ -39,8 +39,10 @@ def publish(client: mqtt) -> mqtt:
 def subscribe(client: mqtt, id_client):
     def on_message(client, userdata, msg):
         print(f"Broker public key received `{msg.payload}` from `{msg.topic}` topic")
+        pub_key = msg.payload
         global broker_public_key 
-        broker_public_key = msg.payload
+        broker_public_key = pub_key[2:]
+        print("Broker public key received", broker_public_key)
         global suback_s 
         suback_s = True
     client.subscribe(id_client, 2)
@@ -57,9 +59,9 @@ suback_s = False
 
 
 def run():
-    #id_client = str(random.randint(0, 100000000))
+    id_client = str(random.randint(0, 100000000))
 
-    id_client = "dummyId11"
+
     client = connect_mqtt(id_client)
     client.loop_start() 
     while connack_s != True:    
