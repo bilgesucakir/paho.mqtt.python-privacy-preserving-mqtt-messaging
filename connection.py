@@ -1,5 +1,6 @@
 import src.paho_folder.mqtt.client as mqtt
 import time
+import datetime
 import random
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -48,11 +49,22 @@ def DiffieHellman():
 
 def run():
     #id_client = str(random.randint(0, 100000000))
-    id_client = "dummyId8"
+
+    id_client = "dummyId11"
     client = connect_mqtt(id_client)
+
+    
+    state = client._session.key_establishment_state
+    print(state)
+
+    
+    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     subscribe(client, id_client)
+    print("subscribed")
+    
+
     logger = logging.getLogger(__name__)
-    client.enable_logger(logger)
+    client.enable_logger(logger),
     client.loop_forever()
 
 
