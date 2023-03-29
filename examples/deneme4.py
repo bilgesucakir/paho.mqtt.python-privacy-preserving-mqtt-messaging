@@ -9,7 +9,7 @@ def connect_mqtt() -> mqtt_client:
         else:
             print("Failed to connect, return code %d\n", rc)
 
-    client = mqtt_client.Client("subscriberClient")
+    client = mqtt_client.Client("123456")
     client.on_connect = on_connect
     client.connect("127.0.0.1")
     return client
@@ -18,7 +18,7 @@ def subscribe(client: mqtt_client):
     def on_message(client, userdata, msg):
         print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
 
-    client.subscribe("python/mqtt")
+    client.subscribe("123456")
     client.on_message = on_message
 
 def run():
