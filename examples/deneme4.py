@@ -9,7 +9,7 @@ def connect_mqtt() -> mqtt_client:
         else:
             print("Failed to connect, return code %d\n", rc)
 
-    client = mqtt_client.Client("Client2")
+    client = mqtt_client.Client("Client-subscirber-new3")
     client.on_connect = on_connect
     client.connect("127.0.0.1")
     return client
