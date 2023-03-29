@@ -13,6 +13,7 @@
 #    Roger Light - initial API and implementation
 #    Ian Craggs - MQTT V5 support
 
+import datetime
 import base64
 import hashlib
 import logging
@@ -3094,6 +3095,12 @@ class Client(object):
         elif cmd == PUBREL:
             return self._handle_pubrel()
         elif cmd == CONNACK:
+            self._session.key_establishment_state = 1
+            self._easy_log(
+                    MQTT_LOG_DEBUG,
+                    "STATE: %s",
+                    self._session.key_establishment_state
+                )
             return self._handle_connack()
         elif cmd == SUBACK:
             return self._handle_suback()
@@ -3152,6 +3159,10 @@ class Client(object):
                     "Received CONNACK (%s, %s), attempting downgrade to MQTT v3.1.",
                     flags, result
                 )
+
+                #bilgesu: set state as 1
+                self._session.key_establishment_state = 1
+
                 # Downgrade to MQTT v3.1
                 self._protocol = MQTTv31
                 return self.reconnect()
@@ -3164,6 +3175,10 @@ class Client(object):
                     "Received CONNACK (%s, %s), attempting to use non-empty CID",
                     flags, result,
                 )
+
+                #bilgesu: set state as 1
+                self._session.key_establishment_state = 1
+
                 self._client_id = base62(uuid.uuid4().int, padding=22)
                 return self.reconnect()
 
@@ -3174,9 +3189,17 @@ class Client(object):
         if self._protocol == MQTTv5:
             self._easy_log(
                 MQTT_LOG_DEBUG, "Received CONNACK (%s, %s) properties=%s", flags, reason, properties)
+            
+            #bilgesu: set state as 1
+            self._session.key_establishment_state = 1
+
         else:
+
             self._easy_log(
-                MQTT_LOG_DEBUG, "TERMINAL: Received CONNACK (%s, %s)", flags, result)
+                MQTT_LOG_DEBUG, "TERMINAL: Received CONNACK (%s, %s), %s", flags, result, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            
+            #bilgesu: set state as 1
+            self._session.key_establishment_state = 1
 
         # it won't be the first successful connect any more
         self._mqttv5_first_connect = False
