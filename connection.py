@@ -59,7 +59,7 @@ suback_s = False
 def run():
     #id_client = str(random.randint(0, 100000000))
 
-    id_client = "dummyId11"
+    id_client = "dummyId18"
     client = connect_mqtt(id_client)
     client.loop_start() 
     while connack_s != True:    
@@ -70,7 +70,7 @@ def run():
         time.sleep(0.1)
     if suback_s == True:
         publish(client)
-        #pub = bytes(broker_public_key, 'utf-8')
+        pub = bytes(broker_public_key, 'utf-8')
         dh2_shared = dh2.generate_shared_key(broker_public_key)
         print("shared key   ",dh2_shared)
 
