@@ -1,4 +1,4 @@
-from paho.mqtt import client as mqtt_client
+from src.paho_folder.mqtt import client as mqtt_client
 import time
 
 
@@ -9,7 +9,7 @@ def connect_mqtt() -> mqtt_client:
         else:
             print("Failed to connect, return code %d\n", rc)
 
-    client = mqtt_client.Client("123456")
+    client = mqtt_client.Client("123458")
     client.on_connect = on_connect
     client.connect("127.0.0.1")
     return client
@@ -18,7 +18,7 @@ def subscribe(client: mqtt_client):
     def on_message(client, userdata, msg):
         print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
 
-    client.subscribe("123456")
+    client.subscribe("123457")
     client.on_message = on_message
 
 def run():

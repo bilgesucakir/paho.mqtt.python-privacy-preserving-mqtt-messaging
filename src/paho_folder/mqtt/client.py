@@ -2946,6 +2946,8 @@ class Client(object):
             local_mid,
             topics,
         )
+
+        
         return (self._packet_queue(command, packet, local_mid, 1), local_mid)
 
     def _send_unsubscribe(self, dup, topics, properties=None):
@@ -3154,14 +3156,16 @@ class Client(object):
             if result == CONNACK_REFUSED_PROTOCOL_VERSION:
                 if not self._reconnect_on_failure:
                     return MQTT_ERR_PROTOCOL
+                
+                #bilgesu: set state as 1
+                self._session.key_establishment_state = 1
                 self._easy_log(
                     MQTT_LOG_DEBUG,
                     "Received CONNACK (%s, %s), attempting downgrade to MQTT v3.1.",
                     flags, result
                 )
 
-                #bilgesu: set state as 1
-                self._session.key_establishment_state = 1
+                
 
                 # Downgrade to MQTT v3.1
                 self._protocol = MQTTv31
@@ -3170,14 +3174,16 @@ class Client(object):
                     and self._client_id == b''):
                 if not self._reconnect_on_failure:
                     return MQTT_ERR_PROTOCOL
+                
+                #bilgesu: set state as 1
+                self._session.key_establishment_state = 1
                 self._easy_log(
                     MQTT_LOG_DEBUG,
                     "Received CONNACK (%s, %s), attempting to use non-empty CID",
                     flags, result,
                 )
 
-                #bilgesu: set state as 1
-                self._session.key_establishment_state = 1
+                
 
                 self._client_id = base62(uuid.uuid4().int, padding=22)
                 return self.reconnect()
@@ -3187,19 +3193,24 @@ class Client(object):
             self._reconnect_delay = None
 
         if self._protocol == MQTTv5:
+
+            #bilgesu: set state as 1
+            self._session.key_establishment_state = 1
+
             self._easy_log(
                 MQTT_LOG_DEBUG, "Received CONNACK (%s, %s) properties=%s", flags, reason, properties)
             
-            #bilgesu: set state as 1
-            self._session.key_establishment_state = 1
+            
 
         else:
-
+            #bilgesu: set state as 1
+            self._session.key_establishment_state = 1
+            print(self._session.key_establishment_state)
+            print("TERMINAL: Received CONNACK (%s, %s), %s", flags, result)
             self._easy_log(
                 MQTT_LOG_DEBUG, "TERMINAL: Received CONNACK (%s, %s), %s", flags, result, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
             
-            #bilgesu: set state as 1
-            self._session.key_establishment_state = 1
+            
 
         # it won't be the first successful connect any more
         self._mqttv5_first_connect = False

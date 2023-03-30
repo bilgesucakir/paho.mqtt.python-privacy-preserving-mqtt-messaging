@@ -1,4 +1,4 @@
-import paho.mqtt.client as mqtt
+import src.paho_folder.mqtt.client as mqtt
 import time
 
 def on_connect(client, userdata, flags, rc):
@@ -17,7 +17,7 @@ def on_publish(client, obj, mid):
  
 Connected = False 
 broker_address = "127.0.0.1"
-client = mqtt.Client(client_id="Client-publisher-new-3",  clean_session=True)
+client = mqtt.Client(client_id="Client-publisher-new-5",  clean_session=True)
 client.on_connect = on_connect
 client.on_publish = on_publish
 
