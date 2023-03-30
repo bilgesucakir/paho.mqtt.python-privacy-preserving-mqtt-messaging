@@ -72,12 +72,19 @@ def run():
         time.sleep(0.1)
     if suback_s == True:
         publish(client)
-        pub = bytes(broker_public_key, 'utf-8')
+        #pub = bytes(broker_public_key, 'utf-8')
         dh2_shared = dh2.generate_shared_key(broker_public_key)
         print("shared key   ",dh2_shared)
 
     logger = logging.getLogger(__name__)
     client.enable_logger(logger)
+
+    inp = ""
+    while inp != "y":
+        inp = input("do you want to disconnect? y/n")
+        if inp == "y":
+            client.disconnect()
+
     client.loop_stop()
 
 
