@@ -187,8 +187,7 @@ class MyMQTTClass(mqtt.Client):
                 except:
                     print("NOT VERIFIED")
                     self.disconnect_flag = True
-            else:
-                print("heyyyoooo")
+            elif (self.key_establishment_state == 7):
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
 
         
