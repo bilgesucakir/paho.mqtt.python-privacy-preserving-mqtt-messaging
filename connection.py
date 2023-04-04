@@ -4,7 +4,65 @@ import datetime
 import random
 from diffiehellman import DiffieHellman
 import logging
+from cryptography.hazmat.primitives import serialization
+from cryptography.x509 import load_pem_x509_certificate
+from os.path import exists, join
+
 logging.basicConfig(level=logging.DEBUG)
+
+
+def cert_read_fnc():
+        """Burcu: START 30Mart"""
+        cert_dir = "."
+        CERT_FILE = "./cert_create/key.pem"
+        C_F = join(cert_dir, CERT_FILE)
+        private_key = "None"
+        try: 
+            if exists(C_F):
+                with open(CERT_FILE, "rb") as key_file:
+                    private_key = serialization.load_pem_private_key(
+                    key_file.read(),
+                    password= None,
+                ) 
+                
+            if (private_key != "None"):
+                public_key = private_key.public_key()
+                private_pem = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption()
+                )
+                private_pem.splitlines()[0]
+                
+                #print("X509 Private key of Client: ", private_pem )
+                public_pem = public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+                )
+                public_pem.splitlines()[0]
+
+                with open("./cert_create/certificate.pem", "rb") as key_file:
+                    x509 = load_pem_x509_certificate(
+                        key_file.read()  
+                    )
+                    public_key2 = x509.public_key()
+                    pem2 = public_key2.public_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PublicFormat.SubjectPublicKeyInfo
+                    )
+                    pem2.splitlines()[0]
+
+                    #print("X509 Public key of Client", pem2)
+                    
+                    x509_pem = x509.public_bytes(encoding=serialization.Encoding.PEM)
+                    print("X509 Certificate of Client", x509_pem)
+            else: 
+               print("Client cannot read the cerficate")
+
+        except:
+            print("Client cannot read the cerficate")  
+        
+
 
 def connect_mqtt(id_client ) -> mqtt:
     def on_connect(client, userdata, flags, rc):
@@ -28,7 +86,7 @@ def publish(client: mqtt) -> mqtt:
 
     client.on_publish = on_publish
     global dh2
-    dh2 = DiffieHellman(group=14, key_bits=2048) #bilgesu: key size increased to 2048
+    dh2 = DiffieHellman(group=14, key_bits=256) #bilgesu: key size increased to 2048
     dh2_public = dh2.get_public_key()
     print("client_public  ", dh2_public )
     client.publish("AuthenticationTopic", dh2_public, qos = 2)
@@ -64,6 +122,7 @@ def run():
 
     client = connect_mqtt(id_client)
     client.loop_start() 
+    cert_read_fnc()
     while connack_s != True:    
         time.sleep(0.1)
     if connack_s == True:
