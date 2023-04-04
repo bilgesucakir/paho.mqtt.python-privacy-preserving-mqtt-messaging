@@ -303,10 +303,7 @@ class MyMQTTClass(mqtt.Client):
                     self.disconnect_flag = True
 
 
-            elif (self.key_establishment_state == 9):
-                print("state 9 inside function")
-                print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
-            else: 
+            elif (self.key_establishment_state == 10):
                 print("inside function")
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
 
@@ -331,7 +328,13 @@ class MyMQTTClass(mqtt.Client):
                 if comming_nonce3 == force_bytes(self.nonce3) and comming_client_id == force_bytes(self.id_client):
                     print("BROKER IS AUTHENTICATED")
                 else: 
-                    print("BROKER CANNOT AUTHENTICATED")
+                    print("BROKER CANNOT BE AUTHENTICATED")
+                    self.disconnect_flag = True
+            else: 
+                print("inside function")
+                print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+                print("something went wrong")
+                
             
         if (self.key_establishment_state == 2):
 
@@ -391,10 +394,10 @@ class MyMQTTClass(mqtt.Client):
             print("state 8")
             self.publish2(client)  
 
-        while self.key_establishment_state != 9:    
+        while self.key_establishment_state != 10:    
             time.sleep(0.1)
-        if self.key_establishment_state == 9:
-            print("STATE 9")
+        if self.key_establishment_state == 10:
+            print("STATE 10")
             self.subscribe1(client, id_client)
 
 
