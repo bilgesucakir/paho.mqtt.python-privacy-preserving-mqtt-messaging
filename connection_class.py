@@ -162,7 +162,8 @@ class MyMQTTClass(mqtt.Client):
        
         backend = default_backend()
         nonce3 = secrets.token_urlsafe()
-        self.nonce3 = nonce3 #nonce3 setted for later 
+
+        self.nonce3 = bytes(nonce3) #nonce3 setted for later 
         value_str = force_str(self.nonce2) + "::::" + nonce3 + "::::" + self.id_client
         value = force_bytes(value_str)
         
