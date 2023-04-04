@@ -25,22 +25,23 @@ logger = logging.getLogger(__name__)
 class MyMQTTClass(mqtt.Client):
 
     def __init__(self):
-        self.client_x509_private_key = "None"
-        self.client_x509_public_key = "None"
-        self.client_x509 = "None"
+        self.client_x509_private_key = None
+        self.client_x509_public_key = None
+        self.client_x509 = None
         self.key_establishment_state = 1 
-        self.client_diffiehellman = "None"
-        self.client_dh_public_key = "None"
-        self.broker_dh_public_key = "None"
-        self.dh_shared_key = "None"
-        self.broker_x509 = "None"
-        self.id_client = "None"
+        self.client_diffiehellman = None
+        self.client_dh_public_key = None
+        self.broker_dh_public_key = None
+        self.dh_shared_key = None
+        self.broker_x509 = None
+        self.id_client = None
         self.disconnect_flag = False
         self.verified = False
-        self.session_key = "None"
-        self.nonce2 = "None"
-        self.comming_client_id = "None"
-        self.nonce3 = "None"
+        self.session_key = None
+        self.nonce1 = None
+        self.nonce2 = None
+        self.comming_client_id = None
+        self.nonce3 = None
 
 
     def cert_read_fnc(self):
@@ -175,37 +176,60 @@ class MyMQTTClass(mqtt.Client):
         def on_message(client, userdata, msg):
             if (self.key_establishment_state == 3):    
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+
+                self.key_establishment_state = 4
+
                 data = msg.payload
+
                 data_len = data[0:2]
+
                 actual_data = data[2:]
                 index1 = actual_data.index(b'::::')
+
                 broker_x509_pem = actual_data[0:index1]
-                pub_and_sign = actual_data[index1:]
-                pub_and_sign = pub_and_sign[4:]
-                index2 = pub_and_sign.index(b'::::')
-                broker_dh_public_key = pub_and_sign[0:index2]
-                broker_rsa_sign = pub_and_sign[index2 + 4 :]
+                nonce_pub_and_sign = actual_data[index1+4:]
+                
+
+                index2 = nonce_pub_and_sign.index(b'::::')
+                broker_dh_public_key = nonce_pub_and_sign[0:index2]
+        
+                nonce_rsa_sign = nonce_pub_and_sign[index2 + 4 :]
+
+                index3 = nonce_rsa_sign.index(b'::::')
+                nonce_1 = nonce_rsa_sign[0:index3]
+                self.nonce1 = nonce_1
+
+                broker_rsa_sign = nonce_rsa_sign[index3+4:]
+
                 print("BROKER X509 CERTIFICATE: ",broker_x509_pem)
                 print("BROKER DIFFIE HELLMAN PUBLIC KEY:", broker_dh_public_key)
+                print("NONCE_1: ", nonce_1)
                 print("BROKER RSA SIGN: ", broker_rsa_sign)
                 self.broker_dh_public_key = broker_dh_public_key
             
         
                 self.key_establishment_state = 5
+
                 broker_x509_bytes = bytes(broker_x509_pem)
                 broker_x509 = load_pem_x509_certificate(broker_x509_bytes )
+
                 self.broker_x509 = broker_x509
+
                 broker_x509_public_key = broker_x509.public_key()
                 broker_x509_public_key_pem = broker_x509_public_key.public_bytes(
                     encoding=serialization.Encoding.PEM,
                     format=serialization.PublicFormat.SubjectPublicKeyInfo
                 )
+
                 print("####### BROKER X509 PUBLIC KEY %s", broker_x509_public_key_pem)
+
                 client_ID_byte = bytes(self.id_client, 'UTF-8')
-                message = broker_dh_public_key + b'::::' + client_ID_byte
+                message = broker_dh_public_key + b'::::' + self.nonce1 + b'::::' + client_ID_byte
                 message_bytes = bytes(message)
                 broker_rsa_sign_bytes = bytes(broker_rsa_sign)
+
                 print("#######MESSAGE IN BROKER RSA SIGN: %s", message_bytes)
+
                 try:
                     broker_x509_public_key.verify(
                         broker_rsa_sign_bytes,
@@ -222,24 +246,38 @@ class MyMQTTClass(mqtt.Client):
                 except:
                     print("NOT VERIFIED")
                     self.disconnect_flag = True
+
+
             elif (self.key_establishment_state == 7):
+
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+
                 data = msg.payload
+
                 data_len = data[0:2]
                 actual_data = data[2:]
                 backend = default_backend()
+
                 sessionkey = force_bytes(base64.urlsafe_b64encode(force_bytes(self.dh_shared_key))[:32])
+
                 self.session_key = sessionkey
+
                 decryptor = Cipher(algorithms.AES(sessionkey), modes.ECB(), backend).decryptor()
                 padder = padding2.PKCS7(algorithms.AES(sessionkey).block_size).unpadder()
+
                 decrypted_data = decryptor.update(actual_data) 
+
                 unpadded = padder.update(decrypted_data) + padder.finalize()
+
                 print("unpadded", unpadded)
+
                 index1 = unpadded.index(b'::::')
                 comming_nonce2 = unpadded[0:index1]
                 comming_client_id = unpadded[index1+4:]
+
                 self.nonce2 = comming_nonce2
                 self.comming_client_id = comming_client_id
+
                 print("comming_nonce2", comming_nonce2)
                 print("comming_client_id", comming_client_id)
                 print(self.id_client)
@@ -250,30 +288,39 @@ class MyMQTTClass(mqtt.Client):
             else: 
                 print("inside function")
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+
                 data = msg.payload
+
                 data_len = data[0:2]
                 actual_data = data[2:]
+
                 backend = default_backend()
                 decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
                 padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
+
                 decrypted_data = decryptor.update(actual_data) 
                 unpadded = padder.update(decrypted_data) + padder.finalize()
+
                 print("unpadded message 10", unpadded)
+
                 index1 = unpadded.index(b'::::')
                 comming_nonce3 = unpadded[0:index1]
                 comming_client_id = unpadded[index1+4:]
+
                 if comming_nonce3 == force_bytes(self.nonce3) and comming_client_id == force_bytes(self.id_client):
                     print("BROKER IS AUTHENTICATED")
                 else: 
                     print("BROKER CANNOT AUTHENTICATED")
             
         if (self.key_establishment_state == 2):
+
             client.subscribe(id_client, 2)   
             self.key_establishment_state = 3
+
         client.on_message = on_message
         return client
     
-
+    '''
     def aes(self):
         key = os.urandom(32)
         iv = os.urandom(16)
@@ -283,11 +330,12 @@ class MyMQTTClass(mqtt.Client):
         decryptor = cipher.decryptor()
         decryptor.update(ct) + decryptor.finalize()
         b'a secret message'
-
+    '''
     
 
     
     def run(self):
+
         id_client = str(random.randint(0, 100000000))
         self.id_client = id_client
         client = self.connect_mqtt(id_client)
@@ -300,8 +348,7 @@ class MyMQTTClass(mqtt.Client):
         print("211", self.key_establishment_state)
         while self.key_establishment_state != 5:    
             time.sleep(0.1)
-        while self.verified != True:
-            time.sleep(0.1)
+    
         print("215", self.key_establishment_state)
         if self.key_establishment_state == 5:
             self.publish1(client)
