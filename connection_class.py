@@ -150,7 +150,7 @@ class MyMQTTClass(mqtt.Client):
         client.publish("AuthenticationTopic", data_to_sent, qos = 2)
 
         self.key_establishment_state = 6
-        
+
         return client
     
     def publish2(self, client: mqtt) -> mqtt:
@@ -162,7 +162,7 @@ class MyMQTTClass(mqtt.Client):
        
         backend = default_backend()
         nonce3 = secrets.token_urlsafe()
-        self.nonce3 = nonce3
+        self.nonce3 = nonce3 #nonce3 setted for later 
         value_str = force_str(self.nonce2) + "::::" + nonce3 + "::::" + self.id_client
         value = force_bytes(value_str)
         
@@ -170,7 +170,9 @@ class MyMQTTClass(mqtt.Client):
         padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
         padded_data = padder.update(value) + padder.finalize()
         encrypted_text = encryptor.update(padded_data) + encryptor.finalize()
+
         client.publish("AuthenticationTopic", encrypted_text , qos = 2)
+
         self.key_establishment_state = 9
         return client
     
@@ -281,12 +283,25 @@ class MyMQTTClass(mqtt.Client):
                 comming_nonce2 = unpadded[0:index1]
                 comming_client_id = unpadded[index1+4:]
 
-                self.nonce2 = comming_nonce2
+                self.nonce2 = comming_nonce2 #set nonce2
                 self.comming_client_id = comming_client_id
 
                 print("comming_nonce2", comming_nonce2)
                 print("comming_client_id", comming_client_id)
                 print(self.id_client)
+
+                incomingClientIdByte = self.comming_client_id
+                encodingParam = "utf-8"
+                incomingClientIdStr = str(incomingClientIdByte, encodingParam)
+
+                if (incomingClientIdStr == self.id_client):
+                    self.key_establishment_state = 8
+                    print("same id")
+                    print("Message encrypted with ")
+                    print(self.key_establishment_state)          
+                else: 
+                    self.disconnect_flag = True
+
 
             elif (self.key_establishment_state == 9):
                 print("state 9 inside function")
@@ -367,14 +382,7 @@ class MyMQTTClass(mqtt.Client):
         if self.key_establishment_state == 7:
             self.subscribe1(client, id_client)
         print("hey1")
-        if (self.comming_client_id == force_bytes(self.id_client)):
-            self.key_establishment_state = 8
-            print("same id")
-            print("Message encrypted with ")
-            print(self.key_establishment_state)          
-        else: 
-            self.disconnect_flag = True
-
+        
         while self.key_establishment_state != 8: 
             print("hey4")   
             time.sleep(0.1)

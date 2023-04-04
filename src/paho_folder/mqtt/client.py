@@ -3087,6 +3087,7 @@ class Client(object):
         elif cmd == PINGRESP:
             return self._handle_pingresp()
         elif cmd == PUBACK:
+            #state can be setted here when the class in added in client.py
             return self._handle_pubackcomp("PUBACK")
         elif cmd == PUBCOMP:
             return self._handle_pubackcomp("PUBCOMP")
