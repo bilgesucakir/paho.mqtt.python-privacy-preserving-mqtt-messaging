@@ -162,7 +162,8 @@ class MyMQTTClass(mqtt.Client):
        
         backend = default_backend()
         nonce3 = secrets.token_urlsafe()
-        self.nonce3 = nonce3 #nonce3 setted for later 
+
+        self.nonce3 = bytes(nonce3, 'utf-8') #nonce3 setted for later 
         value_str = force_str(self.nonce2) + "::::" + nonce3 + "::::" + self.id_client
         value = force_bytes(value_str)
         
@@ -290,17 +291,9 @@ class MyMQTTClass(mqtt.Client):
                 print("comming_client_id", comming_client_id)
                 print(self.id_client)
 
-                incomingClientIdByte = self.comming_client_id
-                encodingParam = "utf-8"
-                incomingClientIdStr = str(incomingClientIdByte, encodingParam)
+        
 
-                if (incomingClientIdStr == self.id_client):
-                    self.key_establishment_state = 8
-                    print("same id")
-                    print("Message encrypted with ")
-                    print(self.key_establishment_state)          
-                else: 
-                    self.disconnect_flag = True
+         
 
 
             elif (self.key_establishment_state == 10):
@@ -392,6 +385,18 @@ class MyMQTTClass(mqtt.Client):
         if self.key_establishment_state == 7:
             self.subscribe1(client, id_client)
         print("hey1")
+
+        incomingClientIdByte = self.comming_client_id
+        encodingParam = "utf-8"
+        incomingClientIdStr = str(incomingClientIdByte, encodingParam)
+
+        if (incomingClientIdStr == self.id_client):
+            self.key_establishment_state = 8
+            print("same id")
+            print("Message encrypted with ")
+            print(self.key_establishment_state)          
+        else: 
+            self.disconnect_flag = True
         
         while self.key_establishment_state != 8: 
             print("hey4")   
@@ -400,6 +405,7 @@ class MyMQTTClass(mqtt.Client):
         if self.key_establishment_state == 8:
             print("state 8")
             self.publish2(client)  
+       
 
         while self.key_establishment_state != 10:    
             time.sleep(0.1)
