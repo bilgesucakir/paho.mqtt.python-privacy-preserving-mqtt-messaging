@@ -542,6 +542,9 @@ class Client(object):
         self._client_mode = MQTT_CLIENT
         self._session = None
 
+
+        self._dontreconnect = False
+
         if protocol == MQTTv5:
             if clean_session is not None:
                 raise ValueError('Clean session is not used for MQTT 5.0')
@@ -914,6 +917,10 @@ class Client(object):
         #bilgesu: create Sessin object
         self._session = ConnectionSession(self._client_id)
 
+        #bilgesu: about reconnect param reset
+        self._dontreconnect = False
+        
+
         if self._protocol == MQTTv5:
             self._mqttv5_first_connect = True
         else:
@@ -1025,92 +1032,98 @@ class Client(object):
     def reconnect(self):
         """Reconnect the client after a disconnect. Can only be called after
         connect()/connect_async()."""
-        if len(self._host) == 0:
-            raise ValueError('Invalid host.')
-        if self._port <= 0:
-            raise ValueError('Invalid port number.')
+        
+        if self._dontreconnect == False:
+            if len(self._host) == 0:
+                raise ValueError('Invalid host.')
+            if self._port <= 0:
+                raise ValueError('Invalid port number.')
 
-        self._in_packet = {
-            "command": 0,
-            "have_remaining": 0,
-            "remaining_count": [],
-            "remaining_mult": 1,
-            "remaining_length": 0,
-            "packet": bytearray(b""),
-            "to_process": 0,
-            "pos": 0}
+            self._in_packet = {
+                "command": 0,
+                "have_remaining": 0,
+                "remaining_count": [],
+                "remaining_mult": 1,
+                "remaining_length": 0,
+                "packet": bytearray(b""),
+                "to_process": 0,
+                "pos": 0}
 
-        self._out_packet = collections.deque()
+            self._out_packet = collections.deque()
 
-        with self._msgtime_mutex:
-            self._last_msg_in = time_func()
-            self._last_msg_out = time_func()
+            with self._msgtime_mutex:
+                self._last_msg_in = time_func()
+                self._last_msg_out = time_func()
 
-        self._ping_t = 0
-        self._state = mqtt_cs_new
+            self._ping_t = 0
+            self._state = mqtt_cs_new
 
-        self._sock_close()
+            self._sock_close()
 
-        # Put messages in progress in a valid state.
-        self._messages_reconnect_reset()
+            # Put messages in progress in a valid state.
+            self._messages_reconnect_reset()
 
-        with self._callback_mutex:
-            on_pre_connect = self.on_pre_connect
+            with self._callback_mutex:
+                on_pre_connect = self.on_pre_connect
 
-        if on_pre_connect:
-            try:
-                on_pre_connect(self, self._userdata)
-            except Exception as err:
-                self._easy_log(
-                    MQTT_LOG_ERR, 'Caught exception in on_pre_connect: %s', err)
-                if not self.suppress_exceptions:
+            if on_pre_connect:
+                try:
+                    on_pre_connect(self, self._userdata)
+                except Exception as err:
+                    self._easy_log(
+                        MQTT_LOG_ERR, 'Caught exception in on_pre_connect: %s', err)
+                    if not self.suppress_exceptions:
+                        raise
+
+            sock = self._create_socket_connection()
+
+            if self._ssl:
+                # SSL is only supported when SSLContext is available (implies Python >= 2.7.9 or >= 3.2)
+
+                verify_host = not self._tls_insecure
+                try:
+                    # Try with server_hostname, even it's not supported in certain scenarios
+                    sock = self._ssl_context.wrap_socket(
+                        sock,
+                        server_hostname=self._host,
+                        do_handshake_on_connect=False,
+                    )
+                except ssl.CertificateError:
+                    # CertificateError is derived from ValueError
                     raise
+                except ValueError:
+                    # Python version requires SNI in order to handle server_hostname, but SNI is not available
+                    sock = self._ssl_context.wrap_socket(
+                        sock,
+                        do_handshake_on_connect=False,
+                    )
+                else:
+                    # If SSL context has already checked hostname, then don't need to do it again
+                    if (hasattr(self._ssl_context, 'check_hostname') and
+                            self._ssl_context.check_hostname):
+                        verify_host = False
 
-        sock = self._create_socket_connection()
+                sock.settimeout(self._keepalive)
+                sock.do_handshake()
 
-        if self._ssl:
-            # SSL is only supported when SSLContext is available (implies Python >= 2.7.9 or >= 3.2)
+                if verify_host:
+                    ssl.match_hostname(sock.getpeercert(), self._host)
 
-            verify_host = not self._tls_insecure
-            try:
-                # Try with server_hostname, even it's not supported in certain scenarios
-                sock = self._ssl_context.wrap_socket(
-                    sock,
-                    server_hostname=self._host,
-                    do_handshake_on_connect=False,
-                )
-            except ssl.CertificateError:
-                # CertificateError is derived from ValueError
-                raise
-            except ValueError:
-                # Python version requires SNI in order to handle server_hostname, but SNI is not available
-                sock = self._ssl_context.wrap_socket(
-                    sock,
-                    do_handshake_on_connect=False,
-                )
-            else:
-                # If SSL context has already checked hostname, then don't need to do it again
-                if (hasattr(self._ssl_context, 'check_hostname') and
-                        self._ssl_context.check_hostname):
-                    verify_host = False
+            if self._transport == "websockets":
+                sock.settimeout(self._keepalive)
+                sock = WebsocketWrapper(sock, self._host, self._port, self._ssl,
+                                        self._websocket_path, self._websocket_extra_headers)
 
-            sock.settimeout(self._keepalive)
-            sock.do_handshake()
+            self._sock = sock
+            self._sock.setblocking(0)
+            self._registered_write = False
+            self._call_socket_open()
 
-            if verify_host:
-                ssl.match_hostname(sock.getpeercert(), self._host)
+            return self._send_connect(self._keepalive)
+        else:
+            print("reconnect not allowed")
+            return None
 
-        if self._transport == "websockets":
-            sock.settimeout(self._keepalive)
-            sock = WebsocketWrapper(sock, self._host, self._port, self._ssl,
-                                    self._websocket_path, self._websocket_extra_headers)
-
-        self._sock = sock
-        self._sock.setblocking(0)
-        self._registered_write = False
-        self._call_socket_open()
-
-        return self._send_connect(self._keepalive)
 
     def loop(self, timeout=1.0, max_packets=1):
         """Process network events.
