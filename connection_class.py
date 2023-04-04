@@ -127,8 +127,10 @@ class MyMQTTClass(mqtt.Client):
         print("Client Diffie Hellman Public Key:  ", dh_public )
         try:
             client_ID_byte = bytes(self.id_client, 'UTF-8')
-            message = self.client_dh_public_key + b'::::' + client_ID_byte
+            message = self.client_dh_public_key  + b'::::'+ self.nonce1 + b'::::' + client_ID_byte #nonce added
+
             print("MESSAGE: " , message)
+
             signature = self.client_x509_private_key.sign(
                 message,
                 padding.PSS(
@@ -141,10 +143,14 @@ class MyMQTTClass(mqtt.Client):
                print("XXXXXXXXXXXXERROR %r ", e3.args)
 
         client_x509_pem = self.client_x509.public_bytes(encoding=serialization.Encoding.PEM)
-        data_to_sent = client_x509_pem + b'::::' + dh_public + b'::::' + signature
+        data_to_sent = client_x509_pem + b'::::' + dh_public + b'::::' + self.nonce1 + b'::::' + signature #nonce added
+
         print("CLIENT SIGNATURE: ", signature)
+
         client.publish("AuthenticationTopic", data_to_sent, qos = 2)
+
         self.key_establishment_state = 6
+        
         return client
     
     def publish2(self, client: mqtt) -> mqtt:
