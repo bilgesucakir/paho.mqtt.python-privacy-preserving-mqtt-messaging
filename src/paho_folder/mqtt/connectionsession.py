@@ -1,5 +1,5 @@
 #bilgesu: new classs for session following
-class Session():
+class ConnectionSession():
 
     def __init__(self, client_id) -> None:
         self.public_key: bytes = None

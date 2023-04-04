@@ -30,7 +30,7 @@ from src.paho_folder.mqtt.reasoncodes import ReasonCodes
 from src.paho_folder.mqtt.subscribeoptions import SubscribeOptions
 
 #bilgesu: session import
-from .session import Session
+from .connectionsession import ConnectionSession
 
 """
 This is an MQTT client module. MQTT is a lightweight pub/sub messaging
@@ -912,7 +912,7 @@ class Client(object):
         """
 
         #bilgesu: create Sessin object
-        self._session = Session(self._client_id)
+        self._session = ConnectionSession(self._client_id)
 
         if self._protocol == MQTTv5:
             self._mqttv5_first_connect = True
