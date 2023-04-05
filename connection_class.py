@@ -17,6 +17,7 @@ from cryptography.hazmat.primitives import padding as padding2
 from cryptography.hazmat.backends import default_backend
 from django.utils.encoding import force_bytes, force_str
 import secrets
+import asyncio
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -216,7 +217,7 @@ class MyMQTTClass(mqtt.Client):
  
     
 
-    def subscribe1(self, client: mqtt, id_client):
+    async def subscribe1(self, client: mqtt, id_client):
         def on_message(client, userdata, msg):
             if (self.key_establishment_state == 3):    
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
@@ -318,6 +319,7 @@ class MyMQTTClass(mqtt.Client):
                 index1 = unpadded.index(b'::::')
                 comming_nonce2 = unpadded[0:index1]
                 comming_client_id = unpadded[index1+4:]
+                print(type(comming_client_id), "set incoming id")
 
                 self.nonce2 = comming_nonce2 #set nonce2
                 self.comming_client_id = comming_client_id
@@ -394,7 +396,7 @@ class MyMQTTClass(mqtt.Client):
     
 
     
-    def run(self):
+    async def run(self):
 
         id_client = str(random.randint(0, 100000000))
         self.id_client = id_client
@@ -404,7 +406,7 @@ class MyMQTTClass(mqtt.Client):
         while self.key_establishment_state != 2:    
             time.sleep(0.1)
         if self.key_establishment_state == 2:
-            self.subscribe1(client, id_client)
+            await self.subscribe1(client, id_client)
         print("211", self.key_establishment_state)
         while self.key_establishment_state != 5:    
             time.sleep(0.1)
@@ -419,20 +421,25 @@ class MyMQTTClass(mqtt.Client):
         while self.key_establishment_state != 7:    
             time.sleep(0.1)
         if self.key_establishment_state == 7:
-            self.subscribe1(client, id_client)
+            await self.subscribe1(client, id_client)
         print("hey1")
 
-        incomingClientIdByte = self.comming_client_id
-        encodingParam = "utf-8"
-        incomingClientIdStr = str(incomingClientIdByte, encodingParam)
+        while self.comming_client_id == None: 
+            time.sleep(0.1)
+        if self.comming_client_id != None:
+            incomingClientIdByte = self.comming_client_id
+            encodingParam = "utf-8"
 
-        if (incomingClientIdStr == self.id_client):
-            self.key_establishment_state = 8
-            print("same id")
-            print("Message encrypted with ")
-            print(self.key_establishment_state)          
-        else: 
-            self.disconnect_flag = True
+
+            print(type(incomingClientIdByte))
+            print(type(self.id_client))
+            if (bytes.decode(incomingClientIdByte, 'utf-8') == self.id_client ):
+                self.key_establishment_state = 8
+                print("same id")
+                print("Message encrypted with ")
+                print(self.key_establishment_state)          
+            else: 
+                self.disconnect_flag = True
         
         while self.key_establishment_state != 8: 
             print("hey4")   
@@ -447,7 +454,7 @@ class MyMQTTClass(mqtt.Client):
             time.sleep(0.1)
         if self.key_establishment_state == 10:
             print("STATE 10")
-            self.subscribe1(client, id_client)
+            await self.subscribe1(client, id_client)
             while (self.authenticated == False):
                 time.sleep(0.1)
             if (self.authenticated == True):
@@ -469,5 +476,5 @@ class MyMQTTClass(mqtt.Client):
 
 
 mqttc = MyMQTTClass()
-rc = mqttc.run()
+rc = asyncio.run(mqttc.run())
 
