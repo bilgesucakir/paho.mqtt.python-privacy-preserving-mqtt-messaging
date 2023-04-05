@@ -45,6 +45,12 @@ class MyMQTTClass(mqtt.Client):
         self.nonce3 = None
         self.authenticated = False
 
+        #fix for now, will be checked later
+        self._sock = None
+        self._sockpairR = None
+        self._sockpairW = None
+        #fix for now, will be checkec later
+
 
     def cert_read_fnc(self):
         cert_dir = "."
@@ -292,6 +298,8 @@ class MyMQTTClass(mqtt.Client):
                     print("NOT VERIFIED")
                     self.disconnect_flag = True
 
+                    self.disconnect()
+
 
             elif (self.key_establishment_state == 7):
 
@@ -361,6 +369,8 @@ class MyMQTTClass(mqtt.Client):
                 else: 
                     print("BROKER CANNOT BE AUTHENTICATED")
                     self.disconnect_flag = True
+
+                    self.disconnect()
             else: 
 
                 message = msg.payload
@@ -440,6 +450,7 @@ class MyMQTTClass(mqtt.Client):
                 print(self.key_establishment_state)          
             else: 
                 self.disconnect_flag = True
+                self.disconnect()
         
         while self.key_establishment_state != 8: 
             print("hey4")   
@@ -469,7 +480,7 @@ class MyMQTTClass(mqtt.Client):
                 self.disconnect_flag = True
               
         if (self.disconnect_flag == True):
-            client.disconnect()
+            self.disconnect()
 
         #client.loop_stop()
 
