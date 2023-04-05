@@ -329,17 +329,24 @@ class MyMQTTClass(mqtt.Client):
                 comming_client_id = unpadded[index1+4:]
                 print(type(comming_client_id), "set incoming id")
 
-                self.nonce2 = comming_nonce2 #set nonce2
-                self.comming_client_id = comming_client_id
+                if(bytes.decode(comming_nonce2,"utf-8") == self.id_client and comming_client_id == b'notAuthenticated'):
+                    #not auth received from broker
 
-                print("comming_nonce2", comming_nonce2)
-                print("comming_client_id", comming_client_id)
-                print(self.id_client)
+                    self._dontreconnect = True
+                    self.disconnect_flag = True
+
+                    self.disconnect()
+
+
+                else:
+                    self.nonce2 = comming_nonce2 #set nonce2
+                    self.comming_client_id = comming_client_id
+
+                    print("comming_nonce2", comming_nonce2)
+                    print("comming_client_id", comming_client_id)
+                    print(self.id_client)
 
         
-
-         
-
 
             elif (self.key_establishment_state == 10):
                 print("inside function")
@@ -356,7 +363,6 @@ class MyMQTTClass(mqtt.Client):
                 decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
                 padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
 
-
         
                 decrypted_data = decryptor.update(actual_data) 
                 unpadded = padder.update(decrypted_data) + padder.finalize()
@@ -367,14 +373,25 @@ class MyMQTTClass(mqtt.Client):
                 comming_nonce3 = unpadded[0:index1]
                 comming_client_id = unpadded[index1+4:]
 
-                if comming_nonce3 == force_bytes(self.nonce3) and comming_client_id == force_bytes(self.id_client):
-                    print("BROKER IS AUTHENTICATED")
-                    self.authenticated = True
-                else: 
-                    print("BROKER CANNOT BE AUTHENTICATED")
+                if(bytes.decode(comming_nonce3,"utf-8") == self.id_client and comming_client_id == b'notAuthenticated'):
+                    #not auth received from broker
+
+                    self._dontreconnect = True
                     self.disconnect_flag = True
 
                     self.disconnect()
+
+                else:
+                    if comming_nonce3 == force_bytes(self.nonce3) and comming_client_id == force_bytes(self.id_client):
+                        print("BROKER IS AUTHENTICATED")
+                        self.authenticated = True
+                    else: 
+                        print("BROKER CANNOT BE AUTHENTICATED")
+                        self.disconnect_flag = True
+
+                        self.disconnect()
+
+
             else: 
 
                 message = msg.payload
