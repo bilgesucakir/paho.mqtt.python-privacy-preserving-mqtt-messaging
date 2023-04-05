@@ -7,7 +7,7 @@ import logging
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509 import load_pem_x509_certificate
 from os.path import exists, join
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.asymmetric import padding
 import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -42,6 +42,7 @@ class MyMQTTClass(mqtt.Client):
         self.nonce2 = None
         self.comming_client_id = None
         self.nonce3 = None
+        self.authenticated = False
 
 
     def cert_read_fnc(self):
@@ -176,6 +177,40 @@ class MyMQTTClass(mqtt.Client):
 
         self.key_establishment_state = 9
         return client
+    
+
+    def publishForChoiceToken(self, client: mqtt) -> mqtt:
+        def on_publish(client, obj, mid):
+            print("Publish publishForChoiceToken message send")
+         
+        client.on_publish = on_publish
+
+        try:
+            print(type(self.client_x509_private_key))
+            print(type(self.session_key))
+            message = b'choiceToken'
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(message)
+            signature = h.finalize()
+            print(signature)
+            topicName = message + b'::::' + signature
+            print(topicName)
+            backend = default_backend() 
+            encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+            padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+            padded_data = padder.update(topicName) + padder.finalize()
+            topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
+            print(topicNameEncryptedByte)
+            topicWanted = b'light'
+            topicNameEncryptedStr = topicNameEncryptedByte.decode('utf-8')
+            print(topicNameEncryptedStr)
+            #client.publish(topicNameEncryptedByte, topicWanted , qos = 2)
+        except Exception as e3:
+               print("XXXXXXXXXXXXERROR %r ", e3.args)
+        
+       
+
+    
     
 
  
@@ -320,6 +355,7 @@ class MyMQTTClass(mqtt.Client):
 
                 if comming_nonce3 == force_bytes(self.nonce3) and comming_client_id == force_bytes(self.id_client):
                     print("BROKER IS AUTHENTICATED")
+                    self.authenticated = True
                 else: 
                     print("BROKER CANNOT BE AUTHENTICATED")
                     self.disconnect_flag = True
@@ -405,6 +441,12 @@ class MyMQTTClass(mqtt.Client):
         if self.key_establishment_state == 10:
             print("STATE 10")
             self.subscribe1(client, id_client)
+            while (self.authenticated == False):
+                time.sleep(0.1)
+            if (self.authenticated == True):
+                print("authenticated true")
+                #self.publishForChoiceToken(client)  #error in the function
+
 
 
         while self.disconnect_flag != True:
