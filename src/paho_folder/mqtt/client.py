@@ -639,6 +639,7 @@ class Client(object):
         # for clean_start == MQTT_CLEAN_START_FIRST_ONLY
         self._mqttv5_first_connect = True
         self.suppress_exceptions = False # For callbacks
+        self._dontreconnect = False
 
 
 
@@ -1032,7 +1033,13 @@ class Client(object):
     def reconnect(self):
         """Reconnect the client after a disconnect. Can only be called after
         connect()/connect_async()."""
-        
+        print("in reconnect")
+
+        if self._dontreconnect == True:
+            print("true")
+        else:
+            print("false")
+
         if self._dontreconnect == False:
             if len(self._host) == 0:
                 raise ValueError('Invalid host.')
@@ -1122,7 +1129,8 @@ class Client(object):
             return self._send_connect(self._keepalive)
         else:
             print("reconnect not allowed")
-            return None
+
+            
 
 
     def loop(self, timeout=1.0, max_packets=1):

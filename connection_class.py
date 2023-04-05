@@ -18,6 +18,7 @@ from cryptography.hazmat.backends import default_backend
 from django.utils.encoding import force_bytes, force_str
 import secrets
 import asyncio
+from src.paho_folder.mqtt.client import Client
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -328,8 +329,9 @@ class MyMQTTClass(mqtt.Client):
                 comming_nonce2 = unpadded[0:index1]
                 comming_client_id = unpadded[index1+4:]
                 print(type(comming_client_id), "set incoming id")
-
+                print("332")
                 if(bytes.decode(comming_nonce2,"utf-8") == self.id_client and comming_client_id == b'notAuthenticated'):
+                    print("334")
                     #not auth received from broker
 
                     self._dontreconnect = True
@@ -372,14 +374,16 @@ class MyMQTTClass(mqtt.Client):
                 index1 = unpadded.index(b'::::')
                 comming_nonce3 = unpadded[0:index1]
                 comming_client_id = unpadded[index1+4:]
-
+                print("377")
                 if(bytes.decode(comming_nonce3,"utf-8") == self.id_client and comming_client_id == b'notAuthenticated'):
                     #not auth received from broker
+                    print("380")
 
-                    self._dontreconnect = True
+                    client._dontreconnect = True
+                    self.disconnect()
                     self.disconnect_flag = True
 
-                    self.disconnect()
+                    
 
                 else:
                     if comming_nonce3 == force_bytes(self.nonce3) and comming_client_id == force_bytes(self.id_client):
@@ -397,7 +401,7 @@ class MyMQTTClass(mqtt.Client):
                 message = msg.payload
                 if message == self.id_client:
                     print("Key establishment failed. Disconnect, do not reconnect untill establishing a new connection with a new key establishment state.")
-                    self._dontreconnect = True #variable set to true to prevent reconnect in this session.
+                    Client._dontreconnect = True #variable set to true to prevent reconnect in this session.
 
 
                 print("inside function")
