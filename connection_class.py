@@ -360,6 +360,13 @@ class MyMQTTClass(mqtt.Client):
                     print("BROKER CANNOT BE AUTHENTICATED")
                     self.disconnect_flag = True
             else: 
+
+                message = msg.payload
+                if message == self.id_client:
+                    print("Key establishment failed. Disconnect, do not reconnect untill establishing a new connection with a new key establishment state.")
+                    self._dontreconnect = True #variable set to true to prevent reconnect in this session.
+
+
                 print("inside function")
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
                 print("something went wrong")
