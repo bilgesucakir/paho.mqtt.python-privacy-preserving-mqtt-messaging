@@ -350,10 +350,14 @@ class MyMQTTClass(mqtt.Client):
                 data_len = data[0:2]
                 actual_data = data[2:]
 
+                print(actual_data, "**************actual data")
+
                 backend = default_backend()
                 decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
                 padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
 
+
+        
                 decrypted_data = decryptor.update(actual_data) 
                 unpadded = padder.update(decrypted_data) + padder.finalize()
 
