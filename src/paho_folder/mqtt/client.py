@@ -1633,7 +1633,7 @@ class Client(object):
         now = time_func()
         self._check_keepalive()
 
-        if self._ping_t > 0 and now - self._ping_t >= self._keepalive:
+        if self._ping_t > 0 and now - self._ping_t >= self._keepalive: #modification here 
             # client->ping_t != 0 means we are waiting for a pingresp.
             # This hasn't happened in the keepalive time so we should disconnect.
             self._sock_close()
@@ -1767,6 +1767,13 @@ class Client(object):
                     #modified*******
                     if self._dontreconnect == False:
                         self.reconnect()
+                    else:
+                        print("here upper")
+                        
+                        
+                        
+                    #modified*************
+
                 except (OSError, WebsocketConnectionError):
                     self._handle_on_connect_fail()
                     if not retry_first_connection:
@@ -1805,7 +1812,12 @@ class Client(object):
                     try:
                         #modifiedd**************
                         if self._dontreconnect == False:
-                            self.reconnect()
+                            self.reconnect
+                        else:
+                            print("here")
+                            #will be added
+                        #modifieddddd********
+                        
                     except (OSError, WebsocketConnectionError):
                         self._handle_on_connect_fail()
                         self._easy_log(
