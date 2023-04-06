@@ -1386,7 +1386,7 @@ class Client(object):
         #added
 
         if self._sock is None:
-            ("self sock is none returning MQTT_ERR_NO_CONN")
+            print("self sock is none returning MQTT_ERR_NO_CONN")
             return MQTT_ERR_NO_CONN
 
 
