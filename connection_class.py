@@ -246,14 +246,15 @@ class MyMQTTClass(mqtt.Client):
             data = msg.payload
             data_len = data[0:2]
             actual_data = data[2:]
+            print(data_len)
+            print(actual_data)
             
-            """
             backend = default_backend()
             decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
             decrypted_data = decryptor.update(actual_data) 
             unpadded = padder.update(decrypted_data) + padder.finalize()
-
+            
             index1 = unpadded.index(b'::::')
             choiceToken = unpadded[0:index1]
             mac_of_choice_token = unpadded[index1+4:]
@@ -267,14 +268,15 @@ class MyMQTTClass(mqtt.Client):
                 print("The content of the message has not been changed ")
             else:
                 print("The content of the message has been changed")
-            """
+            
 
 #END: 4 Nisan
 
         
 
         client.on_message = on_message
-        message = b'choiceToken'
+        message_str = self.id_client
+        message = bytes(message_str, 'utf-8')
         h = hmac.HMAC(self.session_key, hashes.SHA256())
         h.update(message)
         signature = h.finalize()
