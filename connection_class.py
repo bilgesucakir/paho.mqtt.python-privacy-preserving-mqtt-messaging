@@ -45,6 +45,7 @@ class MyMQTTClass(mqtt.Client):
         self.comming_client_id = None
         self.nonce3 = None
         self.authenticated = False
+        self.choice_token_state = 0
 
         #fix for now, will be checked later
         self._sock = None
@@ -208,20 +209,85 @@ class MyMQTTClass(mqtt.Client):
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
             padded_data = padder.update(topicName) + padder.finalize()
             topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
-            print(topicNameEncryptedByte)
+            print("len: ",len(topicNameEncryptedByte))
+            #print(topicNameEncryptedByte)
+
+            topicNameEncryptedHex = topicNameEncryptedByte.hex()
+            print(" len of hex: ",len(topicNameEncryptedHex))
+            #topicNameEncryptedHex = topicNameEncryptedHex[1:]
+            print("topicNameEncryptedByte: ", topicNameEncryptedByte)
+            print("topicNameEncryptedHex: ", topicNameEncryptedHex)
+
+
             topicWanted = b'light'
-            topicNameEncryptedStr = topicNameEncryptedByte.decode('utf-8')
-            print(topicNameEncryptedStr)
-            #client.publish(topicNameEncryptedByte, topicWanted , qos = 2)
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(topicWanted)
+            signature = h.finalize()
+            payload = topicWanted + b'::::' + signature
+            encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+            padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+            padded_data = padder.update(payload) + padder.finalize()
+            payloadByte = encryptor.update(padded_data) + encryptor.finalize()
+
+
+            client.publish(topicNameEncryptedHex, payloadByte , qos = 2)
+            self.choice_token_state = 2
         except Exception as e3:
                print("XXXXXXXXXXXXERROR %r ", e3.args)
         
        
 
-    
-    
+    def subscribe2(self, client: mqtt, id_client):
+        def on_message(client, userdata, msg):
+            print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+            data = msg.payload
+            data_len = data[0:2]
+            actual_data = data[2:]
+            
+            """
+            backend = default_backend()
+            decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
+            padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
+            decrypted_data = decryptor.update(actual_data) 
+            unpadded = padder.update(decrypted_data) + padder.finalize()
 
- 
+            index1 = unpadded.index(b'::::')
+            choiceToken = unpadded[0:index1]
+            mac_of_choice_token = unpadded[index1+4:]
+            print("choiceToken: ", choiceToken)
+
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(choiceToken)
+            signature = h.finalize()
+
+            if(mac_of_choice_token == signature):
+                print("The content of the message has not been changed ")
+            else:
+                print("The content of the message has been changed")
+"""
+
+
+        
+
+        client.on_message = on_message
+        message = b'choiceToken'
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(message)
+        signature = h.finalize()
+          
+        topicName = message + b'::::' + signature
+        
+        backend = default_backend() 
+        encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+        padded_data = padder.update(topicName) + padder.finalize()
+        topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
+        topicNameEncryptedHex = topicNameEncryptedByte.hex()
+
+        client.subscribe(topicNameEncryptedHex, 2)
+        self.choice_token_state = 1   
+
+        return client
     
 
     async def subscribe1(self, client: mqtt, id_client):
@@ -299,7 +365,7 @@ class MyMQTTClass(mqtt.Client):
                     print("NOT VERIFIED")
                     self.disconnect_flag = True
 
-                    self.disconnect()
+                    #self.disconnect()
 
 
             elif (self.key_establishment_state == 7):
@@ -329,15 +395,16 @@ class MyMQTTClass(mqtt.Client):
                 comming_nonce2 = unpadded[0:index1]
                 comming_client_id = unpadded[index1+4:]
                 print(type(comming_client_id), "set incoming id")
-                print("332")
+              
                 if(bytes.decode(comming_nonce2,"utf-8") == self.id_client and comming_client_id == b'notAuthenticated'):
-                    print("334")
+                    
                     #not auth received from broker
 
-                    self._dontreconnect = True
+                    #self._dontreconnect = True
+                    print("Broker cannot authenticate you")
                     self.disconnect_flag = True
 
-                    self.disconnect()
+                 
 
 
                 else:
@@ -374,14 +441,17 @@ class MyMQTTClass(mqtt.Client):
                 index1 = unpadded.index(b'::::')
                 comming_nonce3 = unpadded[0:index1]
                 comming_client_id = unpadded[index1+4:]
-                print("377")
+                
                 if(bytes.decode(comming_nonce3,"utf-8") == self.id_client and comming_client_id == b'notAuthenticated'):
+                    print("Broker cannot authenticate you")
                     #not auth received from broker
-                    print("380")
+                    
 
-                    client._dontreconnect = True
-                    self.disconnect()
+                    #self._dontreconnect = True
                     self.disconnect_flag = True
+                    
+                    
+                    
 
                     
 
@@ -393,7 +463,7 @@ class MyMQTTClass(mqtt.Client):
                         print("BROKER CANNOT BE AUTHENTICATED")
                         self.disconnect_flag = True
 
-                        self.disconnect()
+                     
 
 
             else: 
@@ -417,97 +487,97 @@ class MyMQTTClass(mqtt.Client):
         client.on_message = on_message
         return client
     
-    '''
-    def aes(self):
-        key = os.urandom(32)
-        iv = os.urandom(16)
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-        encryptor = cipher.encryptor()
-        ct = encryptor.update(b"a secret message") + encryptor.finalize()
-        decryptor = cipher.decryptor()
-        decryptor.update(ct) + decryptor.finalize()
-        b'a secret message'
-    '''
-    
+ 
+ 
 
     
     async def run(self):
-
-        id_client = str(random.randint(0, 100000000))
-        self.id_client = id_client
-        client = self.connect_mqtt(id_client)
-        client.loop_start() 
-        self.cert_read_fnc()
-        while self.key_establishment_state != 2:    
-            time.sleep(0.1)
-        if self.key_establishment_state == 2:
-            await self.subscribe1(client, id_client)
-        print("211", self.key_establishment_state)
-        while self.key_establishment_state != 5:    
-            time.sleep(0.1)
-    
-        print("215", self.key_establishment_state)
-        if self.key_establishment_state == 5:
-            self.publish1(client)
-            dh_shared = self.client_diffiehellman.generate_shared_key(self.broker_dh_public_key)
-            print("SHARED KEY:   ",dh_shared)
-            self.dh_shared_key = dh_shared
-        print("221", self.key_establishment_state)
-        while self.key_establishment_state != 7:    
-            time.sleep(0.1)
-        if self.key_establishment_state == 7:
-            await self.subscribe1(client, id_client)
-        print("hey1")
-
-        while self.comming_client_id == None: 
-            time.sleep(0.1)
-        if self.comming_client_id != None:
-            incomingClientIdByte = self.comming_client_id
-            encodingParam = "utf-8"
-
-
-            print(type(incomingClientIdByte))
-            print(type(self.id_client))
-            if (bytes.decode(incomingClientIdByte, 'utf-8') == self.id_client ):
-                self.key_establishment_state = 8
-                print("same id")
-                print("Message encrypted with ")
-                print(self.key_establishment_state)          
-            else: 
-                self.disconnect_flag = True
-                self.disconnect()
         
-        while self.key_establishment_state != 8: 
-            print("hey4")   
-            time.sleep(0.1)
-        print("hey2")
-        if self.key_establishment_state == 8:
-            print("state 8")
-            self.publish2(client)  
-       
-
-        while self.key_establishment_state != 10:    
-            time.sleep(0.1)
-        if self.key_establishment_state == 10:
-            print("STATE 10")
-            await self.subscribe1(client, id_client)
-            while (self.authenticated == False):
+            id_client = str(random.randint(0, 100000000))
+            self.id_client = id_client
+            client = self.connect_mqtt(id_client)
+            client.loop_start() 
+            self.cert_read_fnc()
+            while self.key_establishment_state != 2 and self.disconnect_flag != True:    
                 time.sleep(0.1)
-            if (self.authenticated == True):
-                print("authenticated true")
-                #self.publishForChoiceToken(client)  #error in the function
+            if self.key_establishment_state == 2 and self.disconnect_flag != True:
+                await self.subscribe1(client, id_client)
+            print("211", self.key_establishment_state)
+            while self.key_establishment_state != 5 and self.disconnect_flag != True:    
+                time.sleep(0.1)
+        
+            print("215", self.key_establishment_state)
+            if self.key_establishment_state == 5 and self.disconnect_flag != True:
+                self.publish1(client)
+                dh_shared = self.client_diffiehellman.generate_shared_key(self.broker_dh_public_key)
+                print("SHARED KEY:   ",dh_shared)
+                self.dh_shared_key = dh_shared
+            print("221", self.key_establishment_state)
+            while self.key_establishment_state != 7 and self.disconnect_flag != True:    
+                time.sleep(0.1)
+            if self.key_establishment_state == 7 and self.disconnect_flag != True:
+                await self.subscribe1(client, id_client)
+            print("hey1")
+
+            while self.comming_client_id == None and self.disconnect_flag != True: 
+                time.sleep(0.1)
+            if self.comming_client_id != None and self.disconnect_flag != True:
+                incomingClientIdByte = self.comming_client_id
+                encodingParam = "utf-8"
 
 
+                print(type(incomingClientIdByte))
+                print(type(self.id_client))
+                if (bytes.decode(incomingClientIdByte, 'utf-8') == self.id_client ):
+                    self.key_establishment_state = 8
+                    print("same id")
+                    print("Message encrypted with ")
+                    print(self.key_establishment_state)          
+                else: 
+                    self.disconnect_flag = True
+                    
+            
+            while self.key_establishment_state != 8 and self.disconnect_flag != True: 
+                print("hey4")   
+                time.sleep(0.1)
+            print("hey2")
+            if self.key_establishment_state == 8 and self.disconnect_flag != True:
+                print("state 8")
+                self.publish2(client)  
+        
 
-        while self.disconnect_flag != True:
-            inp = input("do you want to disconnect? y/n")
-            if inp == "y":
-                self.disconnect_flag = True
-              
-        if (self.disconnect_flag == True):
-            self.disconnect()
+            while self.key_establishment_state != 10 and self.disconnect_flag != True:    
+                time.sleep(0.1)
+            if self.key_establishment_state == 10 and self.disconnect_flag != True:
+                print("STATE 10")
+                await self.subscribe1(client, id_client)
+                while (self.authenticated == False and self.disconnect_flag == False):
+                    time.sleep(0.1)
 
-        #client.loop_stop()
+                if (self.authenticated == True):
+                    print("authenticated true")
+                    self.subscribe2(client, id_client)
+
+            while (self.choice_token_state != 1 and self.disconnect_flag == False):
+                    time.sleep(0.1)
+            if (self.choice_token_state == 1 and self.disconnect_flag == False):
+                self.publishForChoiceToken(client) 
+
+            while (self.choice_token_state != 2 and self.disconnect_flag == False):
+                    time.sleep(0.1)
+            if (self.choice_token_state == 2 and self.disconnect_flag == False):
+                self.subscribe2(client, id_client) 
+        
+            if (self.disconnect_flag == True ):
+                client.disconnect()
+      
+            while self.disconnect_flag != True:
+                inp = input("do you want to disconnect? y/n")
+                if inp == "y":
+                    self.disconnect_flag = True
+             
+    
+        #client.loop_stop() 
 
 
 

@@ -1033,6 +1033,7 @@ class Client(object):
     def reconnect(self):
         """Reconnect the client after a disconnect. Can only be called after
         connect()/connect_async()."""
+        print("reconnect")
         
  
         if len(self._host) == 0:
@@ -1767,6 +1768,11 @@ class Client(object):
                     #modified*******
                     if self._dontreconnect == False:
                         self.reconnect()
+                    else:
+                        print("here")
+                        self._state == mqtt_cs_disconnecting
+
+                        
                 except (OSError, WebsocketConnectionError):
                     self._handle_on_connect_fail()
                     if not retry_first_connection:
@@ -1806,6 +1812,12 @@ class Client(object):
                         #modifiedd**************
                         if self._dontreconnect == False:
                             self.reconnect()
+                        else:
+                            print("here2")
+                            self._state == mqtt_cs_disconnecting
+
+                            self.on_disconnect = True
+                            self._do_on_disconnect(MQTT_ERR_SUCCESS)
                     except (OSError, WebsocketConnectionError):
                         self._handle_on_connect_fail()
                         self._easy_log(
