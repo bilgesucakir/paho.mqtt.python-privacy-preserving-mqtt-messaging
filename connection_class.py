@@ -505,7 +505,7 @@ class MyMQTTClass(mqtt.Client):
 
 
             if (self.authenticated == True):
-                print("authenticated true")
+                print("Authenticated. Key establishment finsihed.")
                 #self.publishForChoiceToken(client)  #error in the function
 
 
@@ -519,7 +519,8 @@ class MyMQTTClass(mqtt.Client):
 
             if(self._dontreconnect == True): #bilgesu modification
                 print("Disconnecting from broker since client is not authenticated and key establishment has stopped.")
-
+            else:
+                print("Disconnecting from broker")
             returned = self.disconnect()
 
             #modification
