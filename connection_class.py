@@ -190,7 +190,7 @@ class MyMQTTClass(mqtt.Client):
         self.key_establishment_state = 9
         return client
     
-
+#Start: 4 Nisan
     def publishForChoiceToken(self, client: mqtt) -> mqtt:
         def on_publish(client, obj, mid):
             print("Publish publishForChoiceToken message send")
@@ -212,14 +212,88 @@ class MyMQTTClass(mqtt.Client):
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
             padded_data = padder.update(topicName) + padder.finalize()
             topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
-            print(topicNameEncryptedByte)
+            print("len: ",len(topicNameEncryptedByte))
+            #print(topicNameEncryptedByte)
+
+            topicNameEncryptedHex = topicNameEncryptedByte.hex()
+            print(" len of hex: ",len(topicNameEncryptedHex))
+            #topicNameEncryptedHex = topicNameEncryptedHex[1:]
+            print("topicNameEncryptedByte: ", topicNameEncryptedByte)
+            print("topicNameEncryptedHex: ", topicNameEncryptedHex)
+
+
             topicWanted = b'light'
-            topicNameEncryptedStr = topicNameEncryptedByte.decode('utf-8')
-            print(topicNameEncryptedStr)
-            #client.publish(topicNameEncryptedByte, topicWanted , qos = 2)
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(topicWanted)
+            signature = h.finalize()
+            payload = topicWanted + b'::::' + signature
+            encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+            padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+            padded_data = padder.update(payload) + padder.finalize()
+            payloadByte = encryptor.update(padded_data) + encryptor.finalize()
+
+
+            client.publish(topicNameEncryptedHex, payloadByte , qos = 2)
+            self.choice_token_state = 2
         except Exception as e3:
                print("XXXXXXXXXXXXERROR %r ", e3.args)
         
+       
+
+    def subscribe2(self, client: mqtt, id_client):
+        def on_message(client, userdata, msg):
+            print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+            data = msg.payload
+            data_len = data[0:2]
+            actual_data = data[2:]
+            
+            """
+            backend = default_backend()
+            decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
+            padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
+            decrypted_data = decryptor.update(actual_data) 
+            unpadded = padder.update(decrypted_data) + padder.finalize()
+
+            index1 = unpadded.index(b'::::')
+            choiceToken = unpadded[0:index1]
+            mac_of_choice_token = unpadded[index1+4:]
+            print("choiceToken: ", choiceToken)
+
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(choiceToken)
+            signature = h.finalize()
+
+            if(mac_of_choice_token == signature):
+                print("The content of the message has not been changed ")
+            else:
+                print("The content of the message has been changed")
+            """
+
+#END: 4 Nisan
+
+        
+
+        client.on_message = on_message
+        message = b'choiceToken'
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(message)
+        signature = h.finalize()
+          
+        topicName = message + b'::::' + signature
+        
+        backend = default_backend() 
+        encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+        padded_data = padder.update(topicName) + padder.finalize()
+        topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
+        topicNameEncryptedHex = topicNameEncryptedByte.hex()
+
+        client.subscribe(topicNameEncryptedHex, 2)
+        self.choice_token_state = 1   
+
+        return client
+    
+
        
 
     
@@ -496,6 +570,7 @@ class MyMQTTClass(mqtt.Client):
         if self.key_establishment_state == 10:
             print("STATE 10")
             await self.subscribe1(client, id_client)
+
             while (self.authenticated == False and stopWhile == False): #bilgesu modification
                 time.sleep(0.1)
 
@@ -503,11 +578,27 @@ class MyMQTTClass(mqtt.Client):
                     self.disconnect_flag = True
                     stopWhile = True
 
+            while (self.authenticated == False and self.disconnect_flag == False):
+                    time.sleep(0.1)
+
+            if (self.authenticated == True):
+                print("authenticated true")
+                self.subscribe2(client, id_client)
+
 
             if (self.authenticated == True):
                 print("Authenticated. Key establishment finsihed.")
                 #self.publishForChoiceToken(client)  #error in the function
+            
+            while (self.choice_token_state != 1 and self.disconnect_flag == False):
+                    time.sleep(0.1)
+            if (self.choice_token_state == 1 and self.disconnect_flag == False):
+                self.publishForChoiceToken(client) 
 
+            while (self.choice_token_state != 2 and self.disconnect_flag == False):
+                    time.sleep(0.1)
+            if (self.choice_token_state == 2 and self.disconnect_flag == False):
+                self.subscribe2(client, id_client) 
 
 
         while self.disconnect_flag != True:
