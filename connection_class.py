@@ -24,6 +24,8 @@ from src.paho_folder.mqtt.client import Client
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+MQTT_ERR_NO_CONN = 4
+
 class MyMQTTClass(mqtt.Client):
 
     def __init__(self):
@@ -50,6 +52,8 @@ class MyMQTTClass(mqtt.Client):
         self._sock = None
         self._sockpairR = None
         self._sockpairW = None
+
+        self._dontreconnect = False
         #fix for now, will be checkec later
 
 
@@ -379,7 +383,7 @@ class MyMQTTClass(mqtt.Client):
                     #not auth received from broker
                     print("380")
 
-                    client._dontreconnect = True
+                    self._dontreconnect = True
                     self.disconnect()
                     self.disconnect_flag = True
 
@@ -485,14 +489,21 @@ class MyMQTTClass(mqtt.Client):
             print("state 8")
             self.publish2(client)  
        
+        stopWhile = False #bilgesu modification
 
         while self.key_establishment_state != 10:    
             time.sleep(0.1)
         if self.key_establishment_state == 10:
             print("STATE 10")
             await self.subscribe1(client, id_client)
-            while (self.authenticated == False):
+            while (self.authenticated == False and stopWhile == False): #bilgesu modification
                 time.sleep(0.1)
+
+                if(self._dontreconnect == True): #bilgesu modification
+                    self.disconnect_flag = True
+                    stopWhile = True
+
+
             if (self.authenticated == True):
                 print("authenticated true")
                 #self.publishForChoiceToken(client)  #error in the function
@@ -505,7 +516,20 @@ class MyMQTTClass(mqtt.Client):
                 self.disconnect_flag = True
               
         if (self.disconnect_flag == True):
-            self.disconnect()
+
+            if(self._dontreconnect == True): #bilgesu modification
+                print("Disconnecting from broker since client is not authenticated and key establishment has stopped.")
+
+            returned = self.disconnect()
+
+            #modification
+            '''
+            if(returned == MQTT_ERR_NO_CONN):
+                print("no send disconnect")
+            else:
+                print("disconnect sent")
+            '''
+            #modification
 
         #client.loop_stop()
 

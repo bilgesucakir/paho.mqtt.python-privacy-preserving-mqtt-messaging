@@ -1361,7 +1361,7 @@ class Client(object):
         """
         return self._state == mqtt_cs_connected
 
-    def disconnect(self, reasoncode=None, properties=None):
+    def disconnect(self, reasoncode=None, properties=None): #bilgesu 6 april modifications
         """Disconnect a connected client from the broker.
         reasoncode: (MQTT v5.0 only) a ReasonCodes instance setting the MQTT v5.0
         reasoncode to be sent with the disconnect.  It is optional, the receiver
@@ -1370,14 +1370,25 @@ class Client(object):
         to be included. Optional - if not set, no properties are sent.
         """
 
+        #print("in disconnect")
+
         #bilgesu: delete session object
         self._session = None
 
 
         self._state = mqtt_cs_disconnecting
 
+        #added
+        '''
+        if self._sock == None:
+            print("self sock is none")
+        '''
+        #added
+
         if self._sock is None:
+            ("self sock is none returning MQTT_ERR_NO_CONN")
             return MQTT_ERR_NO_CONN
+
 
         return self._send_disconnect(reasoncode, properties)
 
@@ -1814,7 +1825,8 @@ class Client(object):
                         if self._dontreconnect == False:
                             self.reconnect
                         else:
-                            print("here")
+                            print("here, loop stop added")
+   
                             #will be added
                         #modifieddddd********
                         
@@ -1846,6 +1858,7 @@ class Client(object):
 
         The force parameter is currently ignored.
         """
+
         if self._thread is None:
             return MQTT_ERR_INVAL
 
@@ -2889,6 +2902,9 @@ class Client(object):
         return self._packet_queue(command, packet, 0, 0)
 
     def _send_disconnect(self, reasoncode=None, properties=None):
+
+        print("in _self_disconnect") #bilgesu 6 april modification
+
         if self._protocol == MQTTv5:
             self._easy_log(MQTT_LOG_DEBUG, "Sending DISCONNECT reasonCode=%s properties=%s",
                            reasoncode,
