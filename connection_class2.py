@@ -19,7 +19,8 @@ from django.utils.encoding import force_bytes, force_str
 import secrets
 import asyncio
 from src.paho_folder.mqtt.client import Client
-from gui4 import MyWindow
+from tkinter import* 
+from tkinter import  messagebox 
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -29,11 +30,18 @@ MQTT_ERR_NO_CONN = 4
 
 class MyMQTTClass(mqtt.Client):
 
+    def on_publish(self, mqttc, obj, mid):
+            print("Publish message send, mid:",str(mid))
+
+    def on_subscribe(self, mqttc, obj, mid, granted_qos):
+        print("Subscribed: "+str(mid)+" "+str(granted_qos))
+
     def __init__(self):
+
         self.client_x509_private_key = None
         self.client_x509_public_key = None
         self.client_x509 = None
-        self.key_establishment_state = 1 
+        self.key_establishment_state = 1
         self.client_diffiehellman = None
         self.client_dh_public_key = None
         self.broker_dh_public_key = None
@@ -49,6 +57,7 @@ class MyMQTTClass(mqtt.Client):
         self.nonce3 = None
         self.authenticated = False
         self.choiceTokenDictionary = {}
+        self.choice_token_state = 0
 
         #fix for now, will be checked later
         self._sock = None
@@ -57,7 +66,7 @@ class MyMQTTClass(mqtt.Client):
 
         self._dontreconnect = False
         #fix for now, will be checkec later
-        
+
 
 
     def cert_read_fnc(self):
@@ -65,14 +74,14 @@ class MyMQTTClass(mqtt.Client):
         CERT_FILE = "./cert_create/key.pem"
         C_F = join(cert_dir, CERT_FILE)
         private_key = "None"
-        try: 
+        try:
             if exists(C_F):
                 with open(CERT_FILE, "rb") as key_file:
                     private_key = serialization.load_pem_private_key(
                     key_file.read(),
                     password= None,
-                ) 
-                
+                )
+
             if (private_key != "None"):
                 public_key = private_key.public_key()
                 private_pem = private_key.private_bytes(
@@ -81,7 +90,7 @@ class MyMQTTClass(mqtt.Client):
                 encryption_algorithm=serialization.NoEncryption()
                 )
                 private_pem.splitlines()[0]
-                
+
                 #print("X509 Private key of Client: ", private_pem )
                 public_pem = public_key.public_bytes(
                 encoding=serialization.Encoding.PEM,
@@ -91,7 +100,7 @@ class MyMQTTClass(mqtt.Client):
 
                 with open("./cert_create/certificate.pem", "rb") as key_file:
                     x509 = load_pem_x509_certificate(
-                        key_file.read()  
+                        key_file.read()
                     )
                     public_key2 = x509.public_key()
                     pem2 = public_key2.public_bytes(
@@ -99,7 +108,7 @@ class MyMQTTClass(mqtt.Client):
                     format=serialization.PublicFormat.SubjectPublicKeyInfo
                     )
                     pem2.splitlines()[0]
-                    
+
                     print("X509 Public key of Client", pem2)
 
                     x509_pem = x509.public_bytes(encoding=serialization.Encoding.PEM)
@@ -108,13 +117,13 @@ class MyMQTTClass(mqtt.Client):
                     self.client_x509_private_key = private_key
                     self.client_x509_public_key = public_key
                     logger.debug("hey")
-            else: 
+            else:
                print("Client cannot read the cerficate")
 
         except:
-            print("Client cannot read the cerficate")  
-        
-    
+            print("Client cannot read the cerficate")
+
+
     def connect_mqtt(self, id_client) -> mqtt:
         def on_connect(client, userdata, flags, rc):
             if rc == 0:
@@ -131,9 +140,9 @@ class MyMQTTClass(mqtt.Client):
 
     def publish1(self, client: mqtt) -> mqtt:
         def on_publish(client, obj, mid):
-            print("Publish message send")
+            print("Publish1 message send, mid=",str(mid))
             self.key_establishment_state = 7
-         
+
 
         client.on_publish = on_publish
         dh = DiffieHellman(group=14, key_bits=256) #bilgesu: key size increased to 2048
@@ -168,21 +177,21 @@ class MyMQTTClass(mqtt.Client):
         self.key_establishment_state = 6
 
         return client
-    
+
     def publish2(self, client: mqtt) -> mqtt:
         def on_publish(client, obj, mid):
-            print("Publish 2 message send")
+            print("Publish2 message send, mid=",str(mid))
             self.key_establishment_state = 10
-         
+
         client.on_publish = on_publish
-       
+
         backend = default_backend()
         nonce3 = secrets.token_urlsafe()
 
-        self.nonce3 = bytes(nonce3, 'utf-8') #nonce3 setted for later 
+        self.nonce3 = bytes(nonce3, 'utf-8') #nonce3 setted for later
         value_str = force_str(self.nonce2) + "::::" + nonce3 + "::::" + self.id_client
         value = force_bytes(value_str)
-        
+
         encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
         padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
         padded_data = padder.update(value) + padder.finalize()
@@ -192,12 +201,15 @@ class MyMQTTClass(mqtt.Client):
 
         self.key_establishment_state = 9
         return client
-    
+
+
+
 #Start: 4 Nisan
-    def publishForChoiceToken(self, client: mqtt) -> mqtt:
+    def publishForChoiceToken(self, client: mqtt,topicname1x) -> mqtt:
+
         def on_publish(client, obj, mid):
-            print("Publish publishForChoiceToken message send")
-         
+            print("Publish publishForChoiceToken message send, mid=",str(mid))
+
         client.on_publish = on_publish
 
         try:
@@ -213,7 +225,7 @@ class MyMQTTClass(mqtt.Client):
             topicName = message + b'::::' + signature
             print(topicName)
 
-            backend = default_backend() 
+            backend = default_backend()
             encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
             padded_data = padder.update(topicName) + padder.finalize()
@@ -228,7 +240,9 @@ class MyMQTTClass(mqtt.Client):
             print("topicNameEncryptedHex: ", topicNameEncryptedHex)
 
 
-            topicWanted = b'light'
+            #topicWanted = b'light'
+            topicWanted = force_bytes(topicname1x)
+            print("topicWanted : ",topicWanted)
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(topicWanted)
             signature = h.finalize()
@@ -243,8 +257,8 @@ class MyMQTTClass(mqtt.Client):
             self.choice_token_state = 2
         except Exception as e3:
                print("XXXXXXXXXXXXERROR %r ", e3.args)
-        
-       
+
+
 
     def subscribe2(self, client: mqtt, id_client):
         def on_message(client, userdata, msg):
@@ -281,42 +295,44 @@ class MyMQTTClass(mqtt.Client):
                 print(self.choiceTokenDictionary)
             else:
                 print("The content of the message has been changed")
-            
 
         client.on_message = on_message
-        message_str = self.id_client
-        message = bytes(message_str, 'utf-8')
 
-        h = hmac.HMAC(self.session_key, hashes.SHA256())
-        h.update(message)
-        signature = h.finalize()
-          
-        topicName = message + b'::::' + signature
-        
-        backend = default_backend() 
-        encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
-        padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
-        padded_data = padder.update(topicName) + padder.finalize()
-        topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
-        topicNameEncryptedHex = topicNameEncryptedByte.hex()
+        if (self.choice_token_state == 0):
 
-        client.subscribe(topicNameEncryptedHex, 2)
-        self.choice_token_state = 1   
+            message_str = self.id_client
+            message = bytes(message_str, 'utf-8')
+
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(message)
+            signature = h.finalize()
+
+            topicName = message + b'::::' + signature
+
+            backend = default_backend()
+            encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+            padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+            padded_data = padder.update(topicName) + padder.finalize()
+            topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
+            topicNameEncryptedHex = topicNameEncryptedByte.hex()
+
+            client.subscribe(topicNameEncryptedHex, 2)
+            self.choice_token_state = 1
 
         return client
-    
 
-       
 
-    
-    
 
- 
-    
+
+
+
+
+
+
 
     async def subscribe1(self, client: mqtt, id_client):
         def on_message(client, userdata, msg):
-            if (self.key_establishment_state == 3):    
+            if (self.key_establishment_state == 3):
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
                 data = msg.payload
 
@@ -326,11 +342,11 @@ class MyMQTTClass(mqtt.Client):
 
                 broker_x509_pem = actual_data[0:index1]
                 nonce_pub_and_sign = actual_data[index1+4:]
-                
+
 
                 index2 = nonce_pub_and_sign.index(b'::::')
                 broker_dh_public_key = nonce_pub_and_sign[0:index2]
-        
+
                 nonce_rsa_sign = nonce_pub_and_sign[index2 + 4 :]
 
                 index3 = nonce_rsa_sign.index(b'::::')
@@ -344,8 +360,8 @@ class MyMQTTClass(mqtt.Client):
                 print("NONCE_1: ", nonce_1)
                 print("BROKER RSA SIGN: ", broker_rsa_sign)
                 self.broker_dh_public_key = broker_dh_public_key
-            
-        
+
+
                 self.key_establishment_state = 5
 
                 broker_x509_bytes = bytes(broker_x509_pem)
@@ -377,10 +393,10 @@ class MyMQTTClass(mqtt.Client):
                             salt_length=padding.PSS.MAX_LENGTH
                         ),
                         hashes.SHA256()
-                    )  
+                    )
                     print("#####VERIFIED")
                     self.verified = True
-                 
+
                 except:
                     print("NOT VERIFIED")
                     self.disconnect_flag = True
@@ -405,7 +421,7 @@ class MyMQTTClass(mqtt.Client):
                 decryptor = Cipher(algorithms.AES(sessionkey), modes.ECB(), backend).decryptor()
                 padder = padding2.PKCS7(algorithms.AES(sessionkey).block_size).unpadder()
 
-                decrypted_data = decryptor.update(actual_data) 
+                decrypted_data = decryptor.update(actual_data)
 
                 unpadded = padder.update(decrypted_data) + padder.finalize()
 
@@ -434,7 +450,7 @@ class MyMQTTClass(mqtt.Client):
                     print("comming_client_id", comming_client_id_orNotAuth)
                     print(self.id_client)
 
-        
+
 
             elif (self.key_establishment_state == 10):
                 print("inside function")
@@ -451,8 +467,8 @@ class MyMQTTClass(mqtt.Client):
                 decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
                 padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
 
-        
-                decrypted_data = decryptor.update(actual_data) 
+
+                decrypted_data = decryptor.update(actual_data)
                 unpadded = padder.update(decrypted_data) + padder.finalize()
 
                 print("unpadded message 10", unpadded)
@@ -469,20 +485,20 @@ class MyMQTTClass(mqtt.Client):
                     self.disconnect()
                     self.disconnect_flag = True
 
-                    
+
 
                 else:
                     if comming_nonce3 == force_bytes(self.nonce3) and comming_client_id == force_bytes(self.id_client):
                         print("BROKER IS AUTHENTICATED")
                         self.authenticated = True
-                    else: 
+                    else:
                         print("BROKER CANNOT BE AUTHENTICATED")
                         self.disconnect_flag = True
 
                         self.disconnect()
 
 
-            else: 
+            else:
 
                 message = msg.payload
                 if message == self.id_client:
@@ -493,34 +509,37 @@ class MyMQTTClass(mqtt.Client):
                 print("inside function")
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
                 print("something went wrong")
-                
-            
-        if (self.key_establishment_state == 2):
 
-            client.subscribe(id_client, 2)   
-            self.key_establishment_state = 3
 
         client.on_message = on_message
+
+        if (self.key_establishment_state == 2):
+
+            client.subscribe(id_client, 2)
+            self.key_establishment_state = 3
+
+
         return client
-    
 
 
-    
-    async def run(self):
+
+
+    async def run1(self):
 
         id_client = str(random.randint(0, 100000000))
         self.id_client = id_client
         client = self.connect_mqtt(id_client)
-        client.loop_start() 
+
+        client.loop_start()
         self.cert_read_fnc()
-        while self.key_establishment_state != 2:    
+        while self.key_establishment_state != 2:
             time.sleep(0.1)
         if self.key_establishment_state == 2:
             await self.subscribe1(client, id_client)
         print("211", self.key_establishment_state)
-        while self.key_establishment_state != 5:    
+        while self.key_establishment_state != 5:
             time.sleep(0.1)
-    
+
         print("215", self.key_establishment_state)
         if self.key_establishment_state == 5:
             self.publish1(client)
@@ -528,13 +547,13 @@ class MyMQTTClass(mqtt.Client):
             print("SHARED KEY:   ",dh_shared)
             self.dh_shared_key = dh_shared
         print("221", self.key_establishment_state)
-        while self.key_establishment_state != 7:    
+        while self.key_establishment_state != 7:
             time.sleep(0.1)
         if self.key_establishment_state == 7:
             await self.subscribe1(client, id_client)
         print("hey1")
 
-        while self.comming_client_id == None: 
+        while self.comming_client_id == None:
             time.sleep(0.1)
         if self.comming_client_id != None:
             incomingClientIdByte = self.comming_client_id
@@ -546,21 +565,21 @@ class MyMQTTClass(mqtt.Client):
                 self.key_establishment_state = 8
                 print("same id")
                 print("Message encrypted with ")
-                print(self.key_establishment_state)          
-            else: 
+                print(self.key_establishment_state)
+            else:
                 self.disconnect_flag = True
                 self.disconnect()
-        
-        while self.key_establishment_state != 8:  
+
+        while self.key_establishment_state != 8:
             time.sleep(0.1)
-        
+
         if self.key_establishment_state == 8:
             print("state 8")
-            self.publish2(client)  
-       
+            self.publish2(client)
+
         stopWhile = False #bilgesu modification
 
-        while self.key_establishment_state != 10:    
+        while self.key_establishment_state != 10:
             time.sleep(0.1)
         if self.key_establishment_state == 10:
             print("STATE 10")
@@ -578,45 +597,63 @@ class MyMQTTClass(mqtt.Client):
                 self.subscribe2(client, id_client)
 
 
+            if (self.authenticated == True):
+                print("Authenticated. Key establishment finished.")
+                #self.publishForChoiceToken(client)  #error in the function
+                return client
+            else:
+                return -1
+
+
+        #client.loop_stop()
+
+    async def run2(self,client,topicname1):
+            print("-------------------run2, topicname: ",topicname1)
+
+            if (self.authenticated == True):
+                print("self.authenticated == True")
+                #self.publishForChoiceToken(client)  #error in the function
+
             while (self.choice_token_state != 1 and self.disconnect_flag == False):
                     time.sleep(0.1)
             if (self.choice_token_state == 1 and self.disconnect_flag == False):
-                #inp = input('The topic names that you want to choice token: ')
-                self.publishForChoiceToken(client) 
+                self.publishForChoiceToken(client,topicname1)
 
             while (self.choice_token_state != 2 and self.disconnect_flag == False):
                     time.sleep(0.1)
             if (self.choice_token_state == 2 and self.disconnect_flag == False):
-                self.subscribe2(client, id_client) 
+                self.subscribe2(client, self.id_client)
+
+            return client
+        #client.loop_stop()
+"""
+mqttc = MyMQTTClass()
+client = asyncio.run(mqttc.run1())
+print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
+topicname1="test1111"
+rc = asyncio.run(mqttc.run2(client,topicname1))
+print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
 
 
-        while self.disconnect_flag != True:
-            inp = input("do you want to disconnect? y/n")
-            if inp == "y":
-                self.disconnect_flag = True
-              
-        if (self.disconnect_flag == True):
+while mqttc.disconnect_flag != True:
+        inp = input("do you want to disconnect? y/n")
+        if inp == "y":
+                mqttc.disconnect_flag = True
 
-            if(self._dontreconnect == True): #bilgesu modification
+        if (mqttc.disconnect_flag == True):
+
+            if(mqttc._dontreconnect == True): #bilgesu modification
                 print("Disconnecting from broker since client is not authenticated and key establishment has stopped.")
             else:
                 print("Disconnecting from broker")
-            returned = self.disconnect()
+            returned = mqttc.disconnect()
+"""
+"""
+window= Tk()
+mywin=MyWindow(window)
+window.geometry('600x600')
+window.title("MQTT CLIENT")
+window.mainloop()
+"""
 
-            #modification
-            '''
-            if(returned == MQTT_ERR_NO_CONN):
-                print("no send disconnect")
-            else:
-                print("disconnect sent")
-            '''
-            #modification
-
-        #client.loop_stop()
-
-
-
-mqttc = MyMQTTClass()
-rc = asyncio.run(mqttc.run())
-
-
+#mqttc.loop_stop()
