@@ -32,9 +32,11 @@ class MyWindow:
 
         self.labl_4 = Label(base, text="Message",width=20,font=("bold", 10))  
         self.labl_4.place(x=10,y=290) 
-        self.entry_04 = Text(base, width=30, height=10)  
-        self.entry_04.place(x=150,y=290)   
-        self.btn2= Button(base, text='Publish',width=15).place(x=150,y=460)
+        #self.entry_04 = Text(base, width=30, height=10)  
+        #self.entry_04.place(x=150,y=290)  
+        self.entry_04 = Entry(base, width=30)  
+        self.entry_04.place(x=150,y=290) 
+        self.btn2= Button(base, text='Publish',width=15, command = self.client_run3).place(x=150,y=460)
 
     def client_run1(self):
         client = asyncio.run(self.mqttc.run1())
@@ -47,6 +49,15 @@ class MyWindow:
 
         rc = asyncio.run(mqttc.run2(self.client,topicname1))
         print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
+
+    def  client_run3(self):
+        topicname1= self.entry_02.get()
+        print("TOPICNAME1",topicname1)
+        message = self.entry_04.get()
+
+        rc = asyncio.run(mqttc.run3(self.client,topicname1, message))
+        print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
+
 
     
   

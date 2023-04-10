@@ -21,6 +21,7 @@ import asyncio
 from src.paho_folder.mqtt.client import Client
 from tkinter import* 
 from tkinter import  messagebox 
+from binascii import unhexlify
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -58,6 +59,7 @@ class MyMQTTClass(mqtt.Client):
         self.authenticated = False
         self.choiceTokenDictionary = {}
         self.choice_token_state = 0
+        self.choice_state_dict = {}
 
         #fix for now, will be checked later
         self._sock = None
@@ -202,6 +204,47 @@ class MyMQTTClass(mqtt.Client):
         self.key_establishment_state = 9
         return client
 
+    def publish3(self, client: mqtt, topicName, message) -> mqtt:
+        def on_publish(client, obj, mid):
+            print("Publish3 message send, mid=",str(mid))
+            
+
+        client.on_publish = on_publish
+
+        topicName_byte = force_bytes(topicName)
+
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(topicName_byte)
+        signature = h.finalize()
+
+        topic_publish = topicName_byte + b'::::' + signature
+
+        backend = default_backend()
+        encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+        padded_data = padder.update(topic_publish) + padder.finalize()
+        encrypted_topic = encryptor.update(padded_data) + encryptor.finalize()
+        encrypted_topic_hex = encrypted_topic.hex()
+
+        message_byte = force_bytes(message)
+
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(message_byte)
+        signature2 = h.finalize()
+
+        message_publish = message_byte + b'::::' + signature2
+
+
+        encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+        padded_data = padder.update(message_publish) + padder.finalize()
+        encrypted_message = encryptor.update(padded_data) + encryptor.finalize()
+
+        client.publish(encrypted_topic_hex, encrypted_message , qos = 2)
+
+       
+        return client
+
 
 
 #Start: 4 Nisan
@@ -254,7 +297,8 @@ class MyMQTTClass(mqtt.Client):
 
 
             client.publish(topicNameEncryptedHex, payloadByte , qos = 2)
-            self.choice_token_state = 2
+            self.choice_state_dict[topicname1x] = 1
+
         except Exception as e3:
                print("XXXXXXXXXXXXERROR %r ", e3.args)
 
@@ -293,6 +337,7 @@ class MyMQTTClass(mqtt.Client):
                 choiceTokenHex = choiceToken.hex()
                 self.choiceTokenDictionary[topicName_str] = choiceTokenHex
                 print(self.choiceTokenDictionary)
+                self.choice_state_dict[topicName_str] = 2
             else:
                 print("The content of the message has been changed")
 
@@ -320,6 +365,88 @@ class MyMQTTClass(mqtt.Client):
             self.choice_token_state = 1
 
         return client
+    
+
+
+    def subscribe3(self, client: mqtt, topicname):
+        def on_message(client, userdata, msg):
+            print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+
+            topic_hex = msg.topic
+            topic_byte = unhexlify(topic_hex)
+            backend = default_backend()
+            decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
+            padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
+            decrypted_data = decryptor.update(topic_byte)
+            unpadded = padder.update(decrypted_data) + padder.finalize()
+
+            index1 = unpadded.index(b'::::')
+            topic_name = unpadded[0:index1]
+            mac_of_topic_name = unpadded[index1+4:]
+
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(topic_name)
+            signature = h.finalize()
+
+            if(signature == mac_of_topic_name):
+                print("The content of the topic name is not changed")
+                data = msg.payload
+                data_len = data[0:2]
+                actual_data = data[2:]
+
+                decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
+                padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
+                decrypted_data = decryptor.update(actual_data)
+                unpadded = padder.update(decrypted_data) + padder.finalize()
+                index1 = unpadded.index(b'::::')
+
+                message = unpadded[0:index1]
+                mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
+
+                h = hmac.HMAC(self.session_key, hashes.SHA256())
+                h.update(message)
+                signature = h.finalize()
+
+                if(signature == mac_of_payload):
+                    print("The content of the payload is not changed")
+                    print("MESSAGE: " ,message, "FROM ", topic_name )
+
+                else:
+                    print("The content of the payload is changed")
+
+
+
+
+            else:
+                print("The content of the topic name is changed")
+
+
+            
+        if(self.choice_state_dict[topicname] == 2):
+
+            client.on_message = on_message
+            topicName_byte = force_bytes(topicname)   
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(topicName_byte)
+            signature = h.finalize()
+             
+
+            topicName_subscribe = topicName_byte + b'::::' + signature
+
+            backend = default_backend()
+            encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+            padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+            padded_data = padder.update(topicName_subscribe) + padder.finalize()
+            topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
+            topicNameEncryptedHex = topicNameEncryptedByte.hex()
+
+            client.subscribe(topicNameEncryptedHex, 2)
+            self.choice_state_dict[topicname] = 3
+        
+
+        return client
+
+
 
 
 
@@ -595,6 +722,7 @@ class MyMQTTClass(mqtt.Client):
             if (self.authenticated == True):
                 print("authenticated true")
                 self.subscribe2(client, id_client)
+                self.choice_token_state = 1
 
 
             if (self.authenticated == True):
@@ -609,20 +737,46 @@ class MyMQTTClass(mqtt.Client):
 
     async def run2(self,client,topicname1):
             print("-------------------run2, topicname: ",topicname1)
+            
 
-            if (self.authenticated == True):
-                print("self.authenticated == True")
-                #self.publishForChoiceToken(client)  #error in the function
-
-            while (self.choice_token_state != 1 and self.disconnect_flag == False):
-                    time.sleep(0.1)
-            if (self.choice_token_state == 1 and self.disconnect_flag == False):
+            if (self.disconnect_flag == False):
+                self.choice_state_dict[topicname1] = 0
                 self.publishForChoiceToken(client,topicname1)
 
-            while (self.choice_token_state != 2 and self.disconnect_flag == False):
+            while (self.choice_state_dict[topicname1] != 1 and self.disconnect_flag == False):
                     time.sleep(0.1)
-            if (self.choice_token_state == 2 and self.disconnect_flag == False):
+            if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
                 self.subscribe2(client, self.id_client)
+
+            while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False):
+                    time.sleep(0.1)
+            if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
+                self.subscribe3(client, topicname1)
+
+            return client
+    
+    async def run3(self,client,topicname1, message):
+            print("-------------------run3, topicname: ",topicname1)
+                       
+            if (self.disconnect_flag == False):
+                self.choice_state_dict[topicname1] = 0
+                self.publishForChoiceToken(client,topicname1)
+
+            while (self.choice_state_dict[topicname1] != 1 and self.disconnect_flag == False):
+                    time.sleep(0.1)
+            if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
+                self.subscribe2(client, self.id_client)
+
+            while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False):
+                    time.sleep(0.1)
+
+            if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
+                self.publish3(client, topicname1, message)
+
+
+
+
+
 
             return client
         #client.loop_stop()
