@@ -1,6 +1,8 @@
 from tkinter import* 
-from tkinter import  messagebox 
+from tkinter import  messagebox
 from connection_class2 import MyMQTTClass
+from connection_class2 import deneme
+
 import asyncio
 
 class MyWindow:
@@ -10,6 +12,10 @@ class MyWindow:
         self.labl_00 = Label(base, text="Connect",width=15,font=("bold", 15))  
         self.labl_00.place(x=150,y=20)  
         self.btn1 = Button(base, text="Connect",width=10, command = self.client_run1).place(x=300,y=20)
+        var1=StringVar() 
+        l1=Label(base, textvariable=var1) 
+        l1.pack() 
+      
 
         self.labl_0 = Label(base, text="Subscribe",width=15,font=("bold", 15))  
         self.labl_0.place(x=40,y=60)  
@@ -32,9 +38,9 @@ class MyWindow:
 
         self.labl_4 = Label(base, text="Message",width=20,font=("bold", 10))  
         self.labl_4.place(x=10,y=290) 
-        #self.entry_04 = Text(base, width=30, height=10)  
+        self.entry_04 = Text(base, width=30, height=10)  
         #self.entry_04.place(x=150,y=290)  
-        self.entry_04 = Entry(base, width=30)  
+        #self.entry_04 = Entry(base, width=30)  
         self.entry_04.place(x=150,y=290) 
         self.btn2= Button(base, text='Publish',width=15, command = self.client_run3).place(x=150,y=460)
 
@@ -53,11 +59,12 @@ class MyWindow:
     def  client_run3(self):
         topicname1= self.entry_02.get()
         print("TOPICNAME1",topicname1)
-        message = self.entry_04.get()
+        message = self.entry_04.get("1.0",END)
 
         rc = asyncio.run(mqttc.run3(self.client,topicname1, message))
         print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
 
+  
 
     
   
@@ -66,7 +73,7 @@ def showMsg():
     messagebox.showinfo('Message', 'You clicked the Submit button!')
 
 
-mqttc = MyMQTTClass()
+mqttc, window = deneme()
 """
 client = asyncio.run(mqttc.run1())
 print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
@@ -74,7 +81,7 @@ topicname1="test1111"
 rc = asyncio.run(mqttc.run2(client,topicname1))
 print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
 """
-window=Tk()
+
 mywin=MyWindow(window, mqttc)
 window.geometry('600x600')
 window.title("MQTT CLIENT")  

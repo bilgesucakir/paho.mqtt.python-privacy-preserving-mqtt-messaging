@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 
 MQTT_ERR_NO_CONN = 4
 
+
+
+
 class MyMQTTClass(mqtt.Client):
 
     def on_publish(self, mqttc, obj, mid):
@@ -38,7 +41,7 @@ class MyMQTTClass(mqtt.Client):
         print("Subscribed: "+str(mid)+" "+str(granted_qos))
 
     def __init__(self):
-
+        
         self.client_x509_private_key = None
         self.client_x509_public_key = None
         self.client_x509 = None
@@ -68,6 +71,8 @@ class MyMQTTClass(mqtt.Client):
 
         self._dontreconnect = False
         #fix for now, will be checkec later
+
+        
 
 
 
@@ -129,8 +134,10 @@ class MyMQTTClass(mqtt.Client):
     def connect_mqtt(self, id_client) -> mqtt:
         def on_connect(client, userdata, flags, rc):
             if rc == 0:
+                data = "Connected to MQTT Broker!"
                 print("Connected to MQTT Broker!")
                 self.key_establishment_state = 2
+                #var1.set(data)
             else:
                  print("Failed to connect, return code %d\n", rc)
 
@@ -212,7 +219,13 @@ class MyMQTTClass(mqtt.Client):
         client.on_publish = on_publish
 
         topicName_byte = force_bytes(topicName)
+        choiceTokenhex = self.choiceTokenDictionary[topicName]
+        choiceToken = unhexlify(choiceTokenhex)
+        print("224 Choice token from dictionary:",self.choiceTokenDictionary[topicName])
+        print("225 Topic name from dictionary:",topicName)
 
+        
+     
         h = hmac.HMAC(self.session_key, hashes.SHA256())
         h.update(topicName_byte)
         signature = h.finalize()
@@ -228,11 +241,23 @@ class MyMQTTClass(mqtt.Client):
 
         message_byte = force_bytes(message)
 
+        choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
+        print("245 choiceTokenKEY: ", choicetoken_key)
+
+
+
+        encryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).padder()
+        padded_data = padder.update(message_byte) + padder.finalize()
+        encrypted_message = encryptor.update(padded_data) + encryptor.finalize()
+        encrypted_message_byte = force_bytes(encrypted_message)
+
+
         h = hmac.HMAC(self.session_key, hashes.SHA256())
-        h.update(message_byte)
+        h.update(encrypted_message_byte)
         signature2 = h.finalize()
 
-        message_publish = message_byte + b'::::' + signature2
+        message_publish = encrypted_message_byte + b'::::' + signature2
 
 
         encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
@@ -245,9 +270,8 @@ class MyMQTTClass(mqtt.Client):
        
         return client
 
-
-
-#Start: 4 Nisan
+ 
+    #Start: 4 Nisan
     def publishForChoiceToken(self, client: mqtt,topicname1x) -> mqtt:
 
         def on_publish(client, obj, mid):
@@ -318,23 +342,36 @@ class MyMQTTClass(mqtt.Client):
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
             decrypted_data = decryptor.update(actual_data) 
             unpadded = padder.update(decrypted_data) + padder.finalize()
+
+            indexMAC = unpadded.rfind(b'::::')
+            topic_and_choiceTokens = unpadded[0:indexMAC]
+            mac_of_choice_token = unpadded[indexMAC+4:]
+            print("mac_of_choice_token", mac_of_choice_token)
+            print("topic_and_choiceTokens", topic_and_choiceTokens)
+
+
             
-            index1 = unpadded.index(b'::::')
-            topicName = unpadded[0:index1]
-            rest = unpadded[index1+4:]
-            index2 = rest.index(b'::::')
-            choiceToken = rest[0:index2]
-            mac_of_choice_token = rest[index2+4:]
+            index1 = topic_and_choiceTokens.index(b'::::')
+            topicName = topic_and_choiceTokens[0:index1]
+            choiceToken = topic_and_choiceTokens[index1+4:]
+            
             print("choiceToken: ", choiceToken)
 
             h = hmac.HMAC(self.session_key, hashes.SHA256())
-            h.update(choiceToken)
+            h.update(topic_and_choiceTokens)
             signature = h.finalize()
 
             if(mac_of_choice_token == signature):
                 print("The content of the message has not been changed ")
                 topicName_str = bytes.decode(topicName)
+
+                print("choicetoken 367: ", choiceToken)
+
                 choiceTokenHex = choiceToken.hex()
+
+                print("choicetokenhex  371:", choiceTokenHex)
+
+
                 self.choiceTokenDictionary[topicName_str] = choiceTokenHex
                 print(self.choiceTokenDictionary)
                 self.choice_state_dict[topicName_str] = 2
@@ -384,12 +421,21 @@ class MyMQTTClass(mqtt.Client):
             topic_name = unpadded[0:index1]
             mac_of_topic_name = unpadded[index1+4:]
 
+            topic_name_str = bytes.decode(topic_name)
+            choiceTokenhex = self.choiceTokenDictionary[topic_name_str]
+            choiceToken = unhexlify(choiceTokenhex)
+            print("Choice token from dictionary:",self.choiceTokenDictionary[topic_name_str])
+            print("Topic name from dictionary:",topic_name_str)
+
+
+
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(topic_name)
             signature = h.finalize()
 
             if(signature == mac_of_topic_name):
                 print("The content of the topic name is not changed")
+
                 data = msg.payload
                 data_len = data[0:2]
                 actual_data = data[2:]
@@ -400,16 +446,24 @@ class MyMQTTClass(mqtt.Client):
                 unpadded = padder.update(decrypted_data) + padder.finalize()
                 index1 = unpadded.index(b'::::')
 
-                message = unpadded[0:index1]
+                message_encrypted_with_ct = unpadded[0:index1]
                 mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
 
+                choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
+                print("choicetoken_key ", choicetoken_key)
+
+                decryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).decryptor()
+                padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).unpadder()
+                decrypted_data2 = decryptor.update(message_encrypted_with_ct)
+                unpadded_message = padder.update(decrypted_data2) + padder.finalize()
+
                 h = hmac.HMAC(self.session_key, hashes.SHA256())
-                h.update(message)
+                h.update(message_encrypted_with_ct)
                 signature = h.finalize()
 
                 if(signature == mac_of_payload):
                     print("The content of the payload is not changed")
-                    print("MESSAGE: " ,message, "FROM ", topic_name )
+                    print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
 
                 else:
                     print("The content of the payload is changed")
@@ -811,3 +865,15 @@ window.mainloop()
 """
 
 #mqttc.loop_stop()
+
+window=Tk()
+var1=StringVar() 
+
+
+
+def deneme():
+    classobj = MyMQTTClass()
+    windowobj = window
+
+    return [classobj, windowobj]
+
