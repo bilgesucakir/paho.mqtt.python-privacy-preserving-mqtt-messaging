@@ -329,6 +329,7 @@ class MyMQTTClass(mqtt.Client):
 
 
 
+
     def subscribe2(self, client: mqtt, id_client):
         def on_message(client, userdata, msg):
             print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
@@ -702,8 +703,6 @@ class MyMQTTClass(mqtt.Client):
 
 
         return client
-
-
 
 
     async def run1(self):
