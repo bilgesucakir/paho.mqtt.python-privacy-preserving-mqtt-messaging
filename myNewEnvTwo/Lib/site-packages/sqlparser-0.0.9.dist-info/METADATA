@@ -1,0 +1,97 @@
+Metadata-Version: 2.1
+Name: sqlparser
+Version: 0.0.9
+Summary: This package helps automatically parse and execute sql queries
+Home-page: UNKNOWN
+Author: Glenn Amundsen
+Author-email: amundsen.glenn@gmail.com
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Database
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Information Technology
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Description-Content-Type: text/markdown
+
+There will be many times when we need to run SQL queries via python code.  Often this is hadeled by copying our sql into our python code as a string and executed it using jaydebeapi.  This works well enough but makes version control a pain if we are editing sql files and then copying them into our python, especially if we are outsourcing the actual development of the queries to another team.
+
+SqlParser is a Python package that wraps around jaydebeapi that seeks to address this issue by automatically parsing our SQL queries based on a few simple annotations that get added when a query is being developed.
+
+This is currently only tested for teradata but it should work with any database supported by jaydebeapi.
+
+### SQL Annotation
+There are three types of sql "Blocks" that can be created using the following annotations:
+--:--SETUP
+These are queries that get run first to maybe create some intermediate table. No data is returned from these
+--:--DATA: output_filename
+These are queries that extract data, and get saved under theme given inlace of "output_filename"
+--:--CLEANUP
+Finally these are queries that get run last two do any cleanup that needs to be done, maybe to remove and intermediate table.
+
+You can have more than one of each block and within each Block, you can have multiple commands and each should be terminated by a semicolon (;). Note:  Data blocks should only contain one command.
+ Here is a simple example using all three types of block but note you will often only need a "DATA" block:
+
+Example Annotated SQL
+
+```sql
+--:--SETUP
+CREATE  table temporary_table as
+Select * from table_a a
+Join table_b  b
+on a.key = b.key;
+
+CREATE  table temporary_table2 as
+Select * from new_table_a a
+Join table_b  b
+on a.key = b.key;
+
+--:--DATA: tracked
+Select * from temporaty_table
+Where package_type = “tracked”;
+
+--:--DATA: sd_agg
+Select route_id, count(barcode)
+From temporary_table
+Where package_type = “special_delivery”
+groupby 1;
+
+
+--:--CLEANUP
+DROP table temporary_table;
+DROP table temporary_table2;
+```
+
+### Using the Parser
+Once you have annotated your sql you can easily use the SqlParser to parse and execute your commands.  Here is a simple example:
+SqlParser Example
+
+```python
+import glob
+import yaml
+from sqlparser import SqlParser
+
+
+#load credentials
+with open('credentials.yaml', 'r') as file:
+    creds = yaml.load(file)
+
+#create a parser and point it to where you want the sql extracts to be stored
+parser = SqlParser(output_basepath="/path/to/store/files/", sep="|")
+
+#set the address and credentials
+parser.set_address("//00.000.00.000/DBS_PORT=0000") #replace address with ip and port of your database
+parser.set_credentials(creds['td_username'], creds['td_password'])
+parser.open_connection()
+
+#run all the queries you want executed
+queries = glob.glob("path/to/annotated/files/*.sql")
+for query in queries:
+    parser.parse_sql(path=query)
+    parser.run_all()
+```
+
