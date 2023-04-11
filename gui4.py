@@ -7,7 +7,7 @@ import asyncio
 import sys
 from io import StringIO
 
-import signal
+#import signal
 
 
 class MyWindow:
@@ -95,7 +95,7 @@ print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
 
 window=Tk()
 
-
+'''
 #bilgesu: update begin
 def handler(event):
     window.destroy()
@@ -104,14 +104,14 @@ def handler(event):
 def check():
     window.after(500, check)  #  time in ms.
 #bilgesu: update end
-
+'''
 
 
 mywin=MyWindow(window, mqttc)
 window.geometry('600x600')
 window.title("MQTT CLIENT")  
 
-
+'''
 #bilgesu: update begin
 signal.signal(signal.SIGINT, lambda x,y : print('terminal ^C') or handler(None))
 
@@ -120,7 +120,7 @@ window.after(500, check)  #  time in ms.
 
 window.bind_all('<Control-c>', handler)
 #bilgesu: update end
-
+'''
 
 
 window.mainloop()
