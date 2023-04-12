@@ -366,28 +366,34 @@ class MyMQTTClass(mqtt.Client):
             topicName = topic_and_choiceTokens[0:index1]
             choiceToken = topic_and_choiceTokens[index1+4:]
 
-            print("choiceToken: ", choiceToken)
-
-            h = hmac.HMAC(self.session_key, hashes.SHA256())
-            h.update(topic_and_choiceTokens)
-            signature = h.finalize()
-
-            if(mac_of_choice_token == signature):
-                print("The content of the message has not been changed ")
-                topicName_str = bytes.decode(topicName)
-
-                print("choicetoken 367: ", choiceToken)
-
-                choiceTokenHex = choiceToken.hex()
-
-                print("choicetokenhex  371:", choiceTokenHex)
+            #bilgesu: modification
+            if topicName == self.id_client and choiceToken == "signVerifyFailed":
+                print("Received signVerifyFailed, wont get choicetoken. Following should be empty:", self.choiceTokenDictionary[topicName_str])
 
 
-                self.choiceTokenDictionary[topicName_str] = choiceTokenHex
-                print(self.choiceTokenDictionary)
-                self.choice_state_dict[topicName_str] = 2
             else:
-                print("The content of the message has been changed")
+                print("choiceToken: ", choiceToken)
+
+                h = hmac.HMAC(self.session_key, hashes.SHA256())
+                h.update(topic_and_choiceTokens)
+                signature = h.finalize()
+
+                if(mac_of_choice_token == signature):
+                    print("The content of the message has not been changed ")
+                    topicName_str = bytes.decode(topicName)
+
+                    print("choicetoken 367: ", choiceToken)
+
+                    choiceTokenHex = choiceToken.hex()
+
+                    print("choicetokenhex  371:", choiceTokenHex)
+
+
+                    self.choiceTokenDictionary[topicName_str] = choiceTokenHex
+                    print(self.choiceTokenDictionary)
+                    self.choice_state_dict[topicName_str] = 2
+                else:
+                    print("The content of the message has been changed")
 
         client.on_message = on_message
 
@@ -697,6 +703,8 @@ class MyMQTTClass(mqtt.Client):
                     self.disconnect_flag = True
 
                     self.disconnect()
+                
+                
 
 
                 else:
@@ -877,8 +885,10 @@ class MyMQTTClass(mqtt.Client):
             if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname1] = 0
                 self.publishForChoiceToken(client,topicname1)
+
             print("---879 length of topicname1=",len(topicname1))
             print("---879 self.choice_state_dict[topicname1]=",self.choice_state_dict[topicname1])
+
             while (self.choice_state_dict[topicname1] != 1 and self.disconnect_flag == False):
                     time.sleep(0.1)
             if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
