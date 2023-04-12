@@ -1,6 +1,7 @@
 from tkinter import* 
 from tkinter import  messagebox
 from client_connection_class import deneme
+from tkinter import ttk
 
 
 import asyncio
@@ -11,48 +12,78 @@ import signal
 
 
 class MyWindow:
-    def __init__(self, base, mqttc, var1):
+    def __init__(self, root, mqttc, var1):
+        
+
+        main_frame = Frame(root)
+        main_frame.pack(fill=BOTH, expand=1)
+
+        # Create A Canvas
+        my_canvas = Canvas(main_frame)
+        my_canvas.pack(side=LEFT, fill=BOTH, expand=1)
+
+        # Add A Scrollbar To The Canvas
+        my_scrollbar = ttk.Scrollbar(main_frame, orient=VERTICAL, command=my_canvas.yview)
+        my_scrollbar.pack(side=RIGHT, fill=Y)
+
+        # Configure The Canvas
+        my_canvas.configure(yscrollcommand=my_scrollbar.set)
+        my_canvas.bind('<Configure>', lambda e: my_canvas.configure(scrollregion = my_canvas.bbox("all")))
+
+        # Create ANOTHER Frame INSIDE the Canvas
+        second_frame = Frame(my_canvas)
+
+        # Add that New frame To a Window In The Canvas
+        my_canvas.create_window((0,0), window=second_frame, anchor="nw")
+
+        
         self.mqttc = mqttc
         self.client = None
         self.var1 = var1
-        self.labl_00 = Label(base, text="Connect",width=15,font=("bold", 15))  
-        self.labl_00.place(x=15,y=20)  
-        self.conn = Button(base, text="Connect",width=15, command=lambda: [self.switch(), self.client_run1()])
-        self.conn.place(x=400,y=50)
+    
+        self.labl_00 = Label(second_frame, text="Connect",width=15,font=("bold", 15))  
+        self.labl_00.grid(row = 0, column =0) 
+        self.conn = Button(second_frame, text="Connect",width=15, command=lambda: [self.switch(), self.client_run1()])
+        self.conn.grid(row = 1, column =0)
+        #self.conn.place(x=400,y=50)
+        #self.my_label = Label(second_frame, text="It's Friday Yo!").grid(row=3, column=2)
 
+    
         var1=StringVar() 
-        l1=Label(base, textvariable=self.var1) 
-        l1.pack() 
+        self.l1=Label(second_frame, textvariable=self.var1) 
+        self.l1.grid(row = 1, column =1)
       
 
-        self.labl_0 = Label(base, text="Subscribe",width=15,font=("bold", 15))  
-        self.labl_0.place(x=20,y=80)  
+        self.labl_0 = Label(second_frame, text="Subscribe",width=15,font=("bold", 15))  
+        self.labl_0.grid(row = 2, column =0) 
         
-        self.labl_1 = Label(base, text="Topic Name:",width=20,font=("bold", 10))  
-        self.labl_1.place(x=10,y=130)  
+        self.labl_1 = Label(second_frame, text="Topic Name:",width=20,font=("bold", 10))  
+        self.labl_1.grid(row = 3, column =0)   
 
-        self.entry_1 = Entry(base, state='disabled')  
-        self.entry_1.place(x=150,y=130)  
-        self.btn1 = Button(base, text='Subscribe',width=15, command = self.client_run2, state='disabled')
-        self.btn1.place(x=400,y=125)
+        self.entry_1 = Entry(second_frame, state='disabled')  
+        self.entry_1.grid(row = 3, column =1)  
+        self.btn1 = Button(second_frame, text='Subscribe',width=15, command = self.client_run2, state='disabled')
+        self.btn1.grid(row = 3, column =2)
 
           
-        self.labl_3 = Label(base, text="Publish",width=15,font=("bold", 15))  
-        self.labl_3.place(x=10,y=210)  
+        self.labl_3 = Label(second_frame, text="Publish",width=15,font=("bold", 15))  
+        self.labl_3.grid(row = 4, column =0) 
         
-        self.labl_2 = Label(base, text="Topic Name",width=20,font=("bold", 10))  
-        self.labl_2.place(x=10,y=270) 
-        self.entry_02 = Entry(base, state='disabled')  
-        self.entry_02.place(x=150,y=270) 
+        self.labl_2 = Label(second_frame, text="Topic Name",width=20,font=("bold", 10))  
+        self.labl_3.grid(row = 5, column =0) 
+        self.entry_02 = Entry(second_frame, state='disabled')  
+        self.entry_02.grid(row = 5, column =1)  
 
-        self.labl_4 = Label(base, text="Message",width=20,font=("bold", 10))  
-        self.labl_4.place(x=10,y=310) 
+        self.labl_4 = Label(second_frame, text="Message",width=20,font=("bold", 10))  
+        self.labl_4.grid(row = 6, column =0) 
          
-        self.entry_04 = Entry(base, width=30, state='disabled')  
-        self.entry_04.place(x=150,y=310)  
+        self.entry_04 = Entry(second_frame, width=30, state='disabled')  
+        self.entry_04.grid(row = 6, column =1)  
 
-        self.btn2= Button(base, text='Publish',width=15, command = self.client_run3, state='disabled')
-        self.btn2.place(x=400,y=305)
+        self.btn2= Button(second_frame, text='Publish',width=15, command = self.client_run3, state='disabled')
+        self.btn2.grid(row = 6, column =2) 
+        
+        
 
         #self.text_widget = Text(base, height=10, state="disabled").place(x=10, y=520)
 
@@ -101,6 +132,7 @@ def showMsg():
 
 mqttc, window, var1 = deneme()
 
+
 """
 client = asyncio.run(mqttc.run1())
 print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
@@ -125,9 +157,11 @@ def check():
 
 
 
-mywin=MyWindow(window, mqttc, var1)
-window.geometry('600x600')
+root=MyWindow(window, mqttc, var1)
+window.geometry('600x400')
 window.title("MQTT CLIENT")  
+
+
 
 
 #bilgesu: update begin
