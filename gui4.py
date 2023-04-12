@@ -35,20 +35,23 @@ class MyWindow:
 
         # Add that New frame To a Window In The Canvas
         my_canvas.create_window((0,0), window=second_frame, anchor="nw")
-
+       
         
         self.mqttc = mqttc
         self.client = None
         self.var1 = var1
-    
-        self.labl_00 = Label(second_frame, text="Connect",width=15,font=("bold", 15))  
-        self.labl_00.grid(row = 0, column =0) 
+        
+        #self.labl_00 = Label(second_frame, text="Connect",width=15,font=("bold", 15)).grid(row = 0, column =0)  
+        #self.labl_00.grid(row = 0, column =0) 
+        
         self.conn = Button(second_frame, text="Connect",width=15, command=lambda: [self.switch(), self.client_run1()])
         self.conn.grid(row = 1, column =0)
         #self.conn.place(x=400,y=50)
+        
         #self.my_label = Label(second_frame, text="It's Friday Yo!").grid(row=3, column=2)
+        
 
-    
+        
         var1=StringVar() 
         self.l1=Label(second_frame, textvariable=self.var1) 
         self.l1.grid(row = 1, column =1)
@@ -87,7 +90,7 @@ class MyWindow:
 
         #self.text_widget = Text(base, height=10, state="disabled").place(x=10, y=520)
 
-
+    
     def switch(self):
         self.btn2["state"] = NORMAL
         self.btn1["state"] = NORMAL
@@ -122,12 +125,11 @@ class MyWindow:
 
         rc = asyncio.run(mqttc.run3(self.client,topicname1, message))
         print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)), rc :",rc)
+    
 
 
   
 
-def showMsg():  
-    messagebox.showinfo('Message', 'You clicked the Submit button!')
 
 
 mqttc, window, var1 = deneme()
@@ -156,10 +158,10 @@ def check():
 #bilgesu: update end
 
 
-
 root=MyWindow(window, mqttc, var1)
 window.geometry('600x400')
-window.title("MQTT CLIENT")  
+window.title("MQTT CLIENT")
+window.mainloop()  
 
 
 
