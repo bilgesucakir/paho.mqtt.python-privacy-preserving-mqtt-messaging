@@ -1,6 +1,6 @@
 from tkinter import* 
 from tkinter import  messagebox
-from connection_class2 import MyMQTTClass
+from client_connection_class import deneme
 
 
 import asyncio
@@ -11,16 +11,17 @@ import signal
 
 
 class MyWindow:
-    def __init__(self, base, mqttc):
+    def __init__(self, base, mqttc, var1):
         self.mqttc = mqttc
         self.client = None
+        self.var1 = var1
         self.labl_00 = Label(base, text="Connect",width=15,font=("bold", 15))  
         self.labl_00.place(x=15,y=20)  
         self.conn = Button(base, text="Connect",width=15, command=lambda: [self.switch(), self.client_run1()])
         self.conn.place(x=400,y=50)
 
         var1=StringVar() 
-        l1=Label(base, textvariable=var1) 
+        l1=Label(base, textvariable=self.var1) 
         l1.pack() 
       
 
@@ -72,6 +73,7 @@ class MyWindow:
         client = asyncio.run(self.mqttc.run1())
         print("rc = asyncio.run(mqttc.run1()), rc :",client)
         self.client = client
+        var1.set(mqttc.msg)
 
 
     def  client_run2(self):
@@ -97,7 +99,7 @@ def showMsg():
     messagebox.showinfo('Message', 'You clicked the Submit button!')
 
 
-mqttc = MyMQTTClass()
+mqttc, window, var1 = deneme()
 
 """
 client = asyncio.run(mqttc.run1())
@@ -109,7 +111,7 @@ print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
 
 
 
-window=Tk()
+
 
 
 #bilgesu: update begin
@@ -123,7 +125,7 @@ def check():
 
 
 
-mywin=MyWindow(window, mqttc)
+mywin=MyWindow(window, mqttc, var1)
 window.geometry('600x600')
 window.title("MQTT CLIENT")  
 
