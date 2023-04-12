@@ -41,8 +41,8 @@ class MyWindow:
         self.client = None
         self.var1 = var1
         
-        #self.labl_00 = Label(second_frame, text="Connect",width=15,font=("bold", 15)).grid(row = 0, column =0)  
-        #self.labl_00.grid(row = 0, column =0) 
+        self.labl_00 = Label(second_frame, text="Connect",width=15,font=("bold", 15)) 
+        self.labl_00.grid(row = 0, column =0) 
         
         self.conn = Button(second_frame, text="Connect",width=15, command=lambda: [self.switch(), self.client_run1()])
         self.conn.grid(row = 1, column =0)
@@ -58,33 +58,40 @@ class MyWindow:
       
 
         self.labl_0 = Label(second_frame, text="Subscribe",width=15,font=("bold", 15))  
-        self.labl_0.grid(row = 2, column =0) 
+        self.labl_0.grid(row = 0, column =1) 
         
         self.labl_1 = Label(second_frame, text="Topic Name:",width=20,font=("bold", 10))  
-        self.labl_1.grid(row = 3, column =0)   
+        self.labl_1.grid(row = 1, column =1)   
 
         self.entry_1 = Entry(second_frame, state='disabled')  
-        self.entry_1.grid(row = 3, column =1)  
+        self.entry_1.grid(row = 2, column =1)  
+
         self.btn1 = Button(second_frame, text='Subscribe',width=15, command = self.client_run2, state='disabled')
-        self.btn1.grid(row = 3, column =2)
+        self.btn1.grid(row = 3, column =1, sticky="N")
 
           
-        self.labl_3 = Label(second_frame, text="Publish",width=15,font=("bold", 15))  
-        self.labl_3.grid(row = 4, column =0) 
+     
+
+        self.labl_5 = Label(second_frame, text="Publish",width=15,font=("bold", 15))  
+        self.labl_5.grid(row = 0, column =3) 
+        
         
         self.labl_2 = Label(second_frame, text="Topic Name",width=20,font=("bold", 10))  
-        self.labl_3.grid(row = 5, column =0) 
+        self.labl_2.grid(row = 1, column =3) 
         self.entry_02 = Entry(second_frame, state='disabled')  
-        self.entry_02.grid(row = 5, column =1)  
+        self.entry_02.grid(row = 1, column =3)  
 
         self.labl_4 = Label(second_frame, text="Message",width=20,font=("bold", 10))  
-        self.labl_4.grid(row = 6, column =0) 
+        self.labl_4.grid(row = 2, column =3) 
          
-        self.entry_04 = Entry(second_frame, width=30, state='disabled')  
-        self.entry_04.grid(row = 6, column =1)  
+        #self.entry_04 = Entry(second_frame, width=30, state='disabled')  
+        #self.entry_04.grid(row = 3, column =3)  
+
+        self.entry_04 = Text(second_frame, width=25, height=8, state='disabled')  
+        self.entry_04.grid(row = 3, column =3) 
 
         self.btn2= Button(second_frame, text='Publish',width=15, command = self.client_run3, state='disabled')
-        self.btn2.grid(row = 6, column =2) 
+        self.btn2.grid(row = 4, column =3) 
         
         
 
@@ -120,8 +127,8 @@ class MyWindow:
     def  client_run3(self):
         topicname1= self.entry_02.get()
         print("TOPICNAME1",topicname1)
-        message = self.entry_04.get()
-        #message = self.entry_04.get("1.0",END) #was like this before
+        #message = self.entry_04.get()
+        message = self.entry_04.get("1.0",END) #was like this before
 
         rc = asyncio.run(mqttc.run3(self.client,topicname1, message))
         print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)), rc :",rc)
