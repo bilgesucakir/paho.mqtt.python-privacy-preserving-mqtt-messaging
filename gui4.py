@@ -119,9 +119,13 @@ class MyWindow:
 
     def  client_run2(self):
         topicname1= self.entry_1.get()
-        print("TOPICNAME1",topicname1)
 
-        rc = asyncio.run(mqttc.run2(self.client,topicname1))
+        list_topicname = topicname1.split(",")
+
+
+        print("TOPICNAME list",list_topicname)
+
+        rc = asyncio.run(mqttc.run2(self.client, list_topicname))
         print("rc = asyncio.run(mqttc.run2(mqttc,topicname)), rc :",rc)
 
     def  client_run3(self):
@@ -157,8 +161,11 @@ print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
 
 #bilgesu: update begin
 def handler(event):
-    window.destroy()
-    print('caught ^C')
+    try:
+        window.destroy()
+        print('caught ^C')
+    except Exception as e:
+        print(e.args)
 
 def check():
     window.after(500, check)  #  time in ms.
@@ -172,7 +179,7 @@ window.mainloop()
 
 
 
-
+'''
 #bilgesu: update begin
 signal.signal(signal.SIGINT, lambda x,y : print('terminal ^C') or handler(None))
 
@@ -181,8 +188,7 @@ window.after(500, check)  #  time in ms.
 
 window.bind_all('<Control-c>', handler)
 #bilgesu: update end
-
-
+'''
 
 window.mainloop()
 

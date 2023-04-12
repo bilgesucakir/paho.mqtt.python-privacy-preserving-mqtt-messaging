@@ -867,8 +867,11 @@ class MyMQTTClass(mqtt.Client):
 
         #client.loop_stop()
 
-    async def run2(self,client,topicname1):
-            print("-------------------run2, topicname: ",topicname1)
+    async def run2(self,client,topicname_list):
+
+        print("-------------------run2, topicname: ")
+
+        for topicname1 in topicname_list:
 
 
             if (self.disconnect_flag == False):
@@ -889,7 +892,7 @@ class MyMQTTClass(mqtt.Client):
             if (self.disconnect_flag == False) :
                 self.subscribe4(client)
 
-            return client
+        return client
 
     async def run3(self,client,topicname1, message):
             print("-------------------run3, topicname: ",topicname1)
