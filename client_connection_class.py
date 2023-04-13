@@ -62,6 +62,8 @@ class MyMQTTClass(mqtt.Client):
         self.choice_token_state = 0
         self.choice_state_dict = {}
 
+        self.fail_to_verify_mac = False
+
         #fix for now, will be checked later
         self._sock = None
         self._sockpairR = None
@@ -300,6 +302,12 @@ class MyMQTTClass(mqtt.Client):
             signature = h.finalize()
             print(signature)
 
+            #bilgesu modificaiton distoring signature on purpose to see the fail case
+            #signature = b'distortedSignature'
+            #this line will be removed
+            #print("DISTORTED SIGNATURE: ", signature)
+
+
             topicName = message + b'::::' + signature
             print(topicName)
 
@@ -324,6 +332,13 @@ class MyMQTTClass(mqtt.Client):
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(topicWanted)
             signature = h.finalize()
+
+
+            #bilgesu modificaiton distoring signature on purpose to see the fail case
+            #signature = "distortedSignature"
+            #this line will be removed
+
+
             payload = topicWanted + b'::::' + signature
             encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
@@ -335,7 +350,7 @@ class MyMQTTClass(mqtt.Client):
             self.choice_state_dict[topicname1x] = 1
 
         except Exception as e3:
-               print("XXXXXXXXXXXXERROR %r ", e3.args)
+               print("ERROR %r ", e3.args)
 
 
 
@@ -892,8 +907,11 @@ class MyMQTTClass(mqtt.Client):
             while (self.choice_state_dict[topicname1] != 1 and self.disconnect_flag == False):
                     time.sleep(0.1)
             if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
+
+                #if signVErifyFailed received do not send 
                 self.subscribe2(client, self.id_client)
 
+            #burada fialed to verify maci kontrol et. True ise tekrardan subscribe olma seçeneği gelmeli. 
             while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False):
                     time.sleep(0.1)
             if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
