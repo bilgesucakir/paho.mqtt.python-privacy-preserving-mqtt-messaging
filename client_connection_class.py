@@ -320,7 +320,7 @@ class MyMQTTClass(mqtt.Client):
     def publishForChoiceToken(self, client: mqtt,topicname1x) -> mqtt:
 
         def on_publish(client, obj, mid):
-            print("----Puback was received---- (step 3 of choice token schema) ")
+            print("\n----Puback was received---- (step 3 of choice token schema) ")
 
         client.on_publish = on_publish
 
@@ -392,7 +392,7 @@ class MyMQTTClass(mqtt.Client):
 
     def subscribe_encrypted_clientID(self, client: mqtt, id_client):
         def on_message(client, userdata, msg):
-            print("----Publish message was received from broker (step 4 of choice token schema)---- from " , msg.topic, " topic")
+            print("\n----Publish message was received from broker (step 4 of choice token schema)---- from " , msg.topic, " topic")
             #print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
             data = msg.payload
             data_len = data[0:2]
@@ -481,7 +481,7 @@ class MyMQTTClass(mqtt.Client):
 
     def subscribe_real_topics(self, client: mqtt, topicname):
         def on_message(client, userdata, msg):
-            print("----Publish message was received from broker")
+            print("\n----Publish message was received from broker")
             print(f"Encrypted payload: `{msg.payload}` from  encrypted topic: `{msg.topic}` ")
             topic_hex = msg.topic
             topic_byte = unhexlify(topic_hex)
@@ -591,7 +591,7 @@ class MyMQTTClass(mqtt.Client):
 
     def subscribe4(self, client: mqtt, is_after_publish:bool):
         def on_message(client, userdata, msg):
-            print("----Publish message was received from broker")
+            print("\n----Publish message was received from broker")
             print(f"Encrypted payload: `{msg.payload}` from  encrypted topic: `{msg.topic}` ")
 
             topic_hex = msg.topic
