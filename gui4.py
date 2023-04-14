@@ -112,7 +112,7 @@ class MyWindow:
         
     def client_run1(self):
         client = asyncio.run(self.mqttc.run1())
-        print("rc = asyncio.run(mqttc.run1()), rc :",client)
+        #print("rc = asyncio.run(mqttc.run1()), rc :",client)
         self.client = client
         var1.set(mqttc.msg)
 
@@ -123,19 +123,19 @@ class MyWindow:
         list_topicname = topicname1.split(",")
 
 
-        print("TOPICNAME list",list_topicname)
+        #print("Topic name list for subscription",list_topicname)
 
         rc = asyncio.run(mqttc.run2(self.client, list_topicname))
-        print("rc = asyncio.run(mqttc.run2(mqttc,topicname)), rc :",rc)
+        #print("rc = asyncio.run(mqttc.run2(mqttc,topicname)), rc :",rc)
 
     def  client_run3(self):
         topicname1= self.entry_02.get()
-        print("TOPICNAME1",topicname1)
+        #print("TOPICNAME1",topicname1)
         #message = self.entry_04.get()
         message = self.entry_04.get("1.0",END) #was like this before
 
         rc = asyncio.run(mqttc.run3(self.client,topicname1, message))
-        print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)), rc :",rc)
+        #print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)), rc :",rc)
     
 
 
