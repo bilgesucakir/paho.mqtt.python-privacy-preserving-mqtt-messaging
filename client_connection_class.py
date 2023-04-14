@@ -942,7 +942,7 @@ class MyMQTTClass(mqtt.Client):
             if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
 
                 #if signVErifyFailed received do not send 
-                self.subscribe2(client, self.id_client)
+                self.subscribe_encrypted_clientID(client, self.id_client)
 
             #burada fialed to verify maci kontrol et. True ise tekrardan subscribe olma seçeneği gelmeli. 
             while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False):
