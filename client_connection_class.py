@@ -24,8 +24,8 @@ from tkinter import  messagebox
 from binascii import unhexlify
 
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+#logging.basicConfig(level=logging.DEBUG)
+#logger = logging.getLogger(__name__)
 
 MQTT_ERR_NO_CONN = 4
 
@@ -94,6 +94,7 @@ class MyMQTTClass(mqtt.Client):
                 private_pem.splitlines()[0]
 
                 #print("X509 Private key of Client: ", private_pem )
+                #print("Private key of X509 is read from the certificate")
                 public_pem = public_key.public_bytes(
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo
@@ -111,14 +112,16 @@ class MyMQTTClass(mqtt.Client):
                     )
                     pem2.splitlines()[0]
 
-                    print("X509 Public key of Client", pem2)
+                    #print("X509 Public key of Client:", pem2)
 
                     x509_pem = x509.public_bytes(encoding=serialization.Encoding.PEM)
-                    #print("X509 Certificate of Client", x509_pem)
+                    print("X509 Certificate of Client: ", x509_pem)
+                    print("Private key of X509 is read from the certificate")
+                    print("X509 Public key of Client: ", pem2)
                     self.client_x509 = x509
                     self.client_x509_private_key = private_key
                     self.client_x509_public_key = public_key
-                    logger.debug("hey")
+                    
             else:
                print("Client cannot read the cerficate")
 
@@ -128,44 +131,46 @@ class MyMQTTClass(mqtt.Client):
    
 
     def on_connect_fail(self, mqttc, obj):
-        print("###140 on_connect_fail)----Connect failed")
+        print("Connection failed")
 
     def on_message(self, mqttc, obj, msg):
-        print("###143 on_message()----PUBLISH message received, topic: " + msg.topic+" "+str(msg.qos)+" "+str(msg.payload))
-        print(f" ###143 ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+        print("PUBLISH message received, topic: " + msg.topic+", QOS:"+str(msg.qos)+", Payload:"+str(msg.payload))
+        #print(f" ###143 ALL DATA `{msg.payload}` from `{msg.topic}` topic")
 
     def on_publish(self, mqttc, obj, mid):
-        print("###147 on_publish()----PUBLISH message sent, message id: " + str(mid))
+        print("PUBLISH message sent, message id: " + str(mid))
 
     def on_subscribe(self, mqttc, obj, mid, granted_qos):
-        print("###150 on_subscribe()----" + "Subscribed: "+str(mid)+" "+str(granted_qos))
+        #print("Subscribed, message id: "+str(mid)+ ", QOS: "+str(granted_qos))
+        print("Suback, message id: "+str(mid))
 
-    def on_log(self, mqttc, obj, level, string):
-        print("-------153 def on_log()----"+ string)
+    #def on_log(self, mqttc, obj, level, string):
+        #print("--------on_log()----"+ string)
 
 
 
     def on_connect(self, mqttc, obj, flags, rc):
-        print("###135 on_connect()----connect successful rc: "+str(rc))
+        print("Connection successful (step 2), return code: "+str(rc))
         self.connected_flag = True
         self.key_establishment_state = 2
         self.msg = "connected"
-        print("YAZ ARTIK:",self.msg)
 
     def connect_mqtt(self, id_client) -> mqtt:
         self._client_id = id_client
         self.connect("127.0.0.1", 1883, 600)
+        print("---Connection message send to broker (step 1)---")
         return self
 
-    def publish1(self, client: mqtt) -> mqtt:
+    def publish_step6(self, client: mqtt) -> mqtt:
 
         def on_publish(client, obj, mid):
-            print("Publish1 message send, mid=",str(mid))
+            print("Publish message (step 6 of the DH Key Exchange) was send, messageID =",str(mid))
             self.key_establishment_state = 7
 
         client.on_publish = on_publish
+        print("----Function: Prepare publish message for step 6 of the DH key exchange----")
 
-        dh = DiffieHellman(group=14, key_bits=256) #bilgesu: key size increased to 2048
+        dh = DiffieHellman(group=14, key_bits=256) 
         dh_public = dh.get_public_key()
         self.client_diffiehellman = dh
         self.client_dh_public_key = dh_public
@@ -174,7 +179,7 @@ class MyMQTTClass(mqtt.Client):
             client_ID_byte = bytes(self.id_client, 'UTF-8')
             message = self.client_dh_public_key  + b'::::'+ self.nonce1 + b'::::' + client_ID_byte #nonce added
 
-            print("MESSAGE: " , message)
+            #print("MESSAGE (step 6 of the DH Key Exchange): " , message)
 
             signature = self.client_x509_private_key.sign(
                 message,
@@ -185,12 +190,17 @@ class MyMQTTClass(mqtt.Client):
                 hashes.SHA256()
                 )
         except Exception as e3:
-               print("XXXXXXXXXXXXERROR %r ", e3.args)
+               print("ERROR %r ", e3.args)
 
         client_x509_pem = self.client_x509.public_bytes(encoding=serialization.Encoding.PEM)
         data_to_sent = client_x509_pem + b'::::' + dh_public + b'::::' + self.nonce1 + b'::::' + signature #nonce added
+        print("PAYLOAD TO BE SEND TO BROKER FOR STEP 6:")
+        print("CLIENT X509 CERTIFICATE: ",client_x509_pem)
+        print("CLIENT DIFFIE HELLMAN PUBLIC KEY:", dh_public)
+        print("NONCE_1: ", self.nonce1)
+        print("CLIENT RSA SIGN: ", signature)
 
-        print("CLIENT SIGNATURE: ", signature)
+        #print("MESSAGE (step 6 of the DH Key Exchange): " , data_to_sent)
 
         client.publish("AuthenticationTopic", data_to_sent, qos = 2)
 
@@ -198,12 +208,13 @@ class MyMQTTClass(mqtt.Client):
 
         return client
 
-    def publish2(self, client: mqtt) -> mqtt:
+    def publish_step9(self, client: mqtt) -> mqtt:
         def on_publish(client, obj, mid):
-            print("Publish2 message send, mid=",str(mid))
+            print("Publish message (step 9 of the DH Key Exchange) was send, messageID =",str(mid))
             self.key_establishment_state = 10
 
         client.on_publish = on_publish
+        print("----Function: Prepare publish message for step 9 of the DH key exchange----")
 
         backend = default_backend()
         nonce3 = secrets.token_urlsafe()
@@ -217,23 +228,27 @@ class MyMQTTClass(mqtt.Client):
         padded_data = padder.update(value) + padder.finalize()
         encrypted_text = encryptor.update(padded_data) + encryptor.finalize()
 
+        print("MESSAGE (step 9 of the DH Key Exchange): " , encrypted_text)
+
         client.publish("AuthenticationTopic", encrypted_text , qos = 2)
 
         self.key_establishment_state = 9
         return client
 
-    def publish3(self, client: mqtt, topicName, message) -> mqtt:
+    def publish_real_topics(self, client: mqtt, topicName, message) -> mqtt:
         def on_publish(client, obj, mid):
-            print("Publish3 message send, mid=",str(mid))
-
+             print("Puback was received, messageID =",str(mid))
 
         client.on_publish = on_publish
+        print("----Function to publish to topic: ", topicName )
+        print("Message to be published: ", message)
 
         topicName_byte = force_bytes(topicName)
         choiceTokenhex = self.choiceTokenDictionary[topicName]
         choiceToken = unhexlify(choiceTokenhex)
-        print("224 Choice token from dictionary:",self.choiceTokenDictionary[topicName])
-        print("225 Topic name from dictionary:",topicName)
+        #print("224 Choice token from dictionary:",self.choiceTokenDictionary[topicName])
+        #print("225 Topic name from dictionary:",topicName)
+        #print("Choice token of the topic: ", choiceTokenhex )
 
 
 
@@ -249,11 +264,12 @@ class MyMQTTClass(mqtt.Client):
         padded_data = padder.update(topic_publish) + padder.finalize()
         encrypted_topic = encryptor.update(padded_data) + encryptor.finalize()
         encrypted_topic_hex = encrypted_topic.hex()
+        print("Authenticated encryption version of the topic name to be published: ", encrypted_topic_hex)
 
         message_byte = force_bytes(message)
 
         choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
-        print("245 choiceTokenKEY: ", choicetoken_key)
+        #print("245 choiceTokenKEY: ", choicetoken_key)
 
 
 
@@ -262,6 +278,7 @@ class MyMQTTClass(mqtt.Client):
         padded_data = padder.update(message_byte) + padder.finalize()
         encrypted_message = encryptor.update(padded_data) + encryptor.finalize()
         encrypted_message_byte = force_bytes(encrypted_message)
+        print("Message after encryption with the choice token: ", encrypted_message)
 
 
         h = hmac.HMAC(self.session_key, hashes.SHA256())
@@ -274,9 +291,10 @@ class MyMQTTClass(mqtt.Client):
         encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
         padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
         padded_data = padder.update(message_publish) + padder.finalize()
-        encrypted_message = encryptor.update(padded_data) + encryptor.finalize()
+        encrypted_message2 = encryptor.update(padded_data) + encryptor.finalize()
+        print("Message after authenticated encyption with the session key: ", encrypted_message2)
 
-        client.publish(encrypted_topic_hex, encrypted_message , qos = 2)
+        client.publish(encrypted_topic_hex, encrypted_message2 , qos = 2)
 
 
         return client
@@ -286,41 +304,42 @@ class MyMQTTClass(mqtt.Client):
     def publishForChoiceToken(self, client: mqtt,topicname1x) -> mqtt:
 
         def on_publish(client, obj, mid):
-            print("Publish publishForChoiceToken message send, mid=",str(mid))
+            print("----Puback was received---- (step 3 of choice token schema) ")
 
         client.on_publish = on_publish
 
         try:
-            print(type(self.client_x509_private_key))
-            print(type(self.session_key))
+            print("----Function: Prepare publish message for step 2 of the choice token schema----")
+            #print(type(self.client_x509_private_key))
+            #print(type(self.session_key))
             message = b'choiceToken'
 
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(message)
             signature = h.finalize()
-            print(signature)
+            #print(signature)
 
             topicName = message + b'::::' + signature
-            print(topicName)
+            #print(topicName)
 
             backend = default_backend()
             encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
             padded_data = padder.update(topicName) + padder.finalize()
             topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
-            print("len: ",len(topicNameEncryptedByte))
+            #print("len: ",len(topicNameEncryptedByte))
             #print(topicNameEncryptedByte)
 
             topicNameEncryptedHex = topicNameEncryptedByte.hex()
-            print(" len of hex: ",len(topicNameEncryptedHex))
+            #print(" len of hex: ",len(topicNameEncryptedHex))
             #topicNameEncryptedHex = topicNameEncryptedHex[1:]
-            print("topicNameEncryptedByte: ", topicNameEncryptedByte)
-            print("topicNameEncryptedHex: ", topicNameEncryptedHex)
+            #print("topicNameEncryptedByte: ", topicNameEncryptedByte)
+            #print("topicNameEncryptedHex: ", topicNameEncryptedHex)
 
 
             #topicWanted = b'light'
             topicWanted = force_bytes(topicname1x)
-            print("topicWanted : ",topicWanted)
+            #print("topicWanted : ",topicWanted)
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(topicWanted)
             signature = h.finalize()
@@ -329,24 +348,28 @@ class MyMQTTClass(mqtt.Client):
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
             padded_data = padder.update(payload) + padder.finalize()
             payloadByte = encryptor.update(padded_data) + encryptor.finalize()
-
-
+            print("Authenticated encryption version of the topic name 'choiceToken': ", topicNameEncryptedHex)
+            print("Payload contains the topic name for which a choice token is asked: ",topicWanted)
+            
             client.publish(topicNameEncryptedHex, payloadByte , qos = 2)
+            print("----Publish was sent to choice token topic (step 2 of choice token schema)----")
             self.choice_state_dict[topicname1x] = 1
 
         except Exception as e3:
-               print("XXXXXXXXXXXXERROR %r ", e3.args)
+               print("ERROR %r ", e3.args)
 
 
 
-    def subscribe2(self, client: mqtt, id_client):
+    def subscribe_encrypted_clientID(self, client: mqtt, id_client):
         def on_message(client, userdata, msg):
-            print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+            print("----Publish message was received from broker (step 4 of choice token schema)---- from " , msg.topic, " topic")
+            #print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
             data = msg.payload
             data_len = data[0:2]
             actual_data = data[2:]
-            print(data_len)
-            print(actual_data)
+            #print(data_len)
+            #print(actual_data)
+            print("Encrypted data: ", actual_data )
 
             backend = default_backend()
             decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
@@ -357,8 +380,8 @@ class MyMQTTClass(mqtt.Client):
             indexMAC = unpadded.rfind(b'::::')
             topic_and_choiceTokens = unpadded[0:indexMAC]
             mac_of_choice_token = unpadded[indexMAC+4:]
-            print("mac_of_choice_token", mac_of_choice_token)
-            print("topic_and_choiceTokens", topic_and_choiceTokens)
+            #print("mac_of_choice_token", mac_of_choice_token)
+            #print("topic_and_choiceTokens", topic_and_choiceTokens)
 
 
 
@@ -366,28 +389,28 @@ class MyMQTTClass(mqtt.Client):
             topicName = topic_and_choiceTokens[0:index1]
             choiceToken = topic_and_choiceTokens[index1+4:]
 
-            print("choiceToken: ", choiceToken)
+            print("Topic name:", topicName, " and its choiceToken: ", choiceToken)
 
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(topic_and_choiceTokens)
             signature = h.finalize()
 
             if(mac_of_choice_token == signature):
-                print("The content of the message has not been changed ")
+                print("The content of the message has not been changed. Mac is correct ")
                 topicName_str = bytes.decode(topicName)
 
-                print("choicetoken 367: ", choiceToken)
+                #print("choicetoken 367: ", choiceToken)
 
                 choiceTokenHex = choiceToken.hex()
 
-                print("choicetokenhex  371:", choiceTokenHex)
+                #print("choicetokenhex  371:", choiceTokenHex)
 
 
                 self.choiceTokenDictionary[topicName_str] = choiceTokenHex
-                print(self.choiceTokenDictionary)
+                #print(self.choiceTokenDictionary)
                 self.choice_state_dict[topicName_str] = 2
             else:
-                print("The content of the message has been changed")
+                print("The content of the message has been changed. Mac is not correct")
 
         client.on_message = on_message
 
@@ -410,16 +433,18 @@ class MyMQTTClass(mqtt.Client):
             topicNameEncryptedHex = topicNameEncryptedByte.hex()
 
             client.subscribe(topicNameEncryptedHex, 2)
+            print("----Client was subscribed to its encrypted clientID (step 1 of the choice token schema)")
+            print("Encrypted clientID: ", topicNameEncryptedHex )
             self.choice_token_state = 1
 
         return client
 
 
 
-    def subscribe3(self, client: mqtt, topicname):
+    def subscribe_real_topics(self, client: mqtt, topicname):
         def on_message(client, userdata, msg):
-            print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
-
+            print("----Publish message was received from broker")
+            print(f"Encrypted payload: `{msg.payload}` from  encrypted topic: `{msg.topic}` ")
             topic_hex = msg.topic
             topic_byte = unhexlify(topic_hex)
             backend = default_backend()
@@ -435,8 +460,12 @@ class MyMQTTClass(mqtt.Client):
             topic_name_str = bytes.decode(topic_name)
             choiceTokenhex = self.choiceTokenDictionary[topic_name_str]
             choiceToken = unhexlify(choiceTokenhex)
-            print("Choice token from dictionary:",self.choiceTokenDictionary[topic_name_str])
-            print("Topic name from dictionary:",topic_name_str)
+            #print("Choice token from dictionary:",self.choiceTokenDictionary[topic_name_str])
+            #print("Topic name from dictionary:",topic_name_str)
+            print("Decrypted topic name: ", topic_name_str ," and its mac: ", mac_of_topic_name)
+            print("Choice token of the topic: ", choiceTokenhex )
+            
+
 
 
 
@@ -445,7 +474,7 @@ class MyMQTTClass(mqtt.Client):
             signature = h.finalize()
 
             if(signature == mac_of_topic_name):
-                print("The content of the topic name is not changed")
+                print("The content of the topic name is not changed. Mac of the topic name is correct")
 
                 data = msg.payload
                 data_len = data[0:2]
@@ -459,28 +488,28 @@ class MyMQTTClass(mqtt.Client):
 
                 message_encrypted_with_ct = unpadded[0:index1]
                 mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
+                print("Message after decryption with session key: ", message_encrypted_with_ct)
 
                 choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
-                print("choicetoken_key ", choicetoken_key)
+                #print("Choicetoken key: ", choicetoken_key)
 
                 decryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).decryptor()
                 padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).unpadder()
                 decrypted_data2 = decryptor.update(message_encrypted_with_ct)
                 unpadded_message = padder.update(decrypted_data2) + padder.finalize()
+                print("Message after decryption with choice token: ", unpadded_message, " from topic: ",  topic_name_str )
 
                 h = hmac.HMAC(self.session_key, hashes.SHA256())
                 h.update(message_encrypted_with_ct)
                 signature = h.finalize()
+            
 
                 if(signature == mac_of_payload):
-                    print("The content of the payload is not changed")
-                    print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
+                    print("The content of the payload is not changed, Mac of the payload is correct")
+                    #print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
 
                 else:
-                    print("The content of the payload is changed")
-
-
-
+                    print("The content of the payload is changed, Mac of the payload is not correct")
 
             else:
                 print("The content of the topic name is changed")
@@ -490,10 +519,12 @@ class MyMQTTClass(mqtt.Client):
         if(self.choice_state_dict[topicname] == 2):
 
             client.on_message = on_message
+            print("----Function to subscribe to topic: ", topicname )
             topicName_byte = force_bytes(topicname)
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(topicName_byte)
             signature = h.finalize()
+            print("HMAC of the topic: ", signature )
 
 
             topicName_subscribe = topicName_byte + b'::::' + signature
@@ -504,6 +535,7 @@ class MyMQTTClass(mqtt.Client):
             padded_data = padder.update(topicName_subscribe) + padder.finalize()
             topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
             topicNameEncryptedHex = topicNameEncryptedByte.hex()
+            print("Authenticated encryption version of the ", topicname, ": " ,topicNameEncryptedHex )
 
             client.subscribe(topicNameEncryptedHex, 2)
             self.choice_state_dict[topicname] = 3
@@ -521,7 +553,8 @@ class MyMQTTClass(mqtt.Client):
 
     def subscribe4(self, client: mqtt):
         def on_message(client, userdata, msg):
-            print(f"----subscribe4 on_message---ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+            print("----Publish message was received from broker")
+            print(f"Encrypted payload: `{msg.payload}` from  encrypted topic: `{msg.topic}` ")
 
             topic_hex = msg.topic
             topic_byte = unhexlify(topic_hex)
@@ -538,8 +571,10 @@ class MyMQTTClass(mqtt.Client):
             topic_name_str = bytes.decode(topic_name)
             choiceTokenhex = self.choiceTokenDictionary[topic_name_str]
             choiceToken = unhexlify(choiceTokenhex)
-            print("Choice token from dictionary:",self.choiceTokenDictionary[topic_name_str])
-            print("Topic name from dictionary:",topic_name_str)
+            #print("Choice token from dictionary:",self.choiceTokenDictionary[topic_name_str])
+            #print("Topic name from dictionary:",topic_name_str)
+            print("Decrypted topic name: ", topic_name_str ," and its mac: ", mac_of_topic_name)
+            print("Choice token of the topic: ", choiceTokenhex )
 
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(topic_name)
@@ -560,37 +595,40 @@ class MyMQTTClass(mqtt.Client):
 
                 message_encrypted_with_ct = unpadded[0:index1]
                 mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
+                print("Message after decryption with session key: ", message_encrypted_with_ct)
 
                 choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
-                print("choicetoken_key ", choicetoken_key)
+                #print("choicetoken_key ", choicetoken_key)
 
                 decryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).decryptor()
                 padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).unpadder()
                 decrypted_data2 = decryptor.update(message_encrypted_with_ct)
                 unpadded_message = padder.update(decrypted_data2) + padder.finalize()
+                print("Message after decryption with choice token: ", unpadded_message, " from ", topic_name_str)
 
                 h = hmac.HMAC(self.session_key, hashes.SHA256())
                 h.update(message_encrypted_with_ct)
                 signature = h.finalize()
 
                 if(signature == mac_of_payload):
-                    print("The content of the payload is not changed")
-                    print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
+                    print("The content of the payload is not changed. Mac of the payload is correct")
+                    #print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
 
                 else:
-                    print("HATA: The content of the payload is changed")
+                    print("The content of the payload is changed, Mac of the payload is not correct")
             else:
-                print("HATA: The content of the topic name is changed")
+                print("The content of the topic name is changed. Mac of the topic name is correct")
 
 
         client.on_message = on_message
 
 
 
-    async def subscribe1(self, client: mqtt, id_client):
+    async def subscribe_clientID(self, client: mqtt, id_client):
         def on_message(client, userdata, msg):
             if (self.key_establishment_state == 3):
-                print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+                print("----Publish message was received from broker (step 5 of the DH)---- from `{msg.topic}` topic")
+                #print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
                 data = msg.payload
 
                 data_len = data[0:2]
@@ -611,7 +649,7 @@ class MyMQTTClass(mqtt.Client):
                 self.nonce1 = nonce_1
 
                 broker_rsa_sign = nonce_rsa_sign[index3+4:]
-
+                print("PAYLOAD COMING FROM BROKER FOR STEP 5:")
                 print("BROKER X509 CERTIFICATE: ",broker_x509_pem)
                 print("BROKER DIFFIE HELLMAN PUBLIC KEY:", broker_dh_public_key)
                 print("NONCE_1: ", nonce_1)
@@ -632,14 +670,14 @@ class MyMQTTClass(mqtt.Client):
                     format=serialization.PublicFormat.SubjectPublicKeyInfo
                 )
 
-                print("####### BROKER X509 PUBLIC KEY %s", broker_x509_public_key_pem)
+                print("BROKER X509 PUBLIC KEY:", broker_x509_public_key_pem)
 
                 client_ID_byte = bytes(self.id_client, 'UTF-8')
                 message = broker_dh_public_key + b'::::' + self.nonce1 + b'::::' + client_ID_byte
                 message_bytes = bytes(message)
                 broker_rsa_sign_bytes = bytes(broker_rsa_sign)
 
-                print("#######MESSAGE IN BROKER RSA SIGN: %s", message_bytes)
+                print("MESSAGE IN BROKER RSA SIGN: %s", message_bytes)
 
                 try:
                     broker_x509_public_key.verify(
@@ -651,18 +689,17 @@ class MyMQTTClass(mqtt.Client):
                         ),
                         hashes.SHA256()
                     )
-                    print("#####VERIFIED")
+                    print("MESSAGE VERIFIED")
                     self.verified = True
 
                 except:
-                    print("NOT VERIFIED")
+                    print("MESSAGE NOT VERIFIED")
                     self.disconnect_flag = True
-
                     self.disconnect()
 
 
             elif (self.key_establishment_state == 7):
-
+                print("----Publish message was received from broker (step 8 of the DH)----")
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
 
                 data = msg.payload
@@ -682,15 +719,16 @@ class MyMQTTClass(mqtt.Client):
 
                 unpadded = padder.update(decrypted_data) + padder.finalize()
 
-                print("unpadded", unpadded)
+                print("Decrpted message: ", unpadded)
 
                 index1 = unpadded.index(b'::::')
                 comming_nonce2_or_clientId = unpadded[0:index1]
                 comming_client_id_orNotAuth = unpadded[index1+4:]
-                print(type(comming_client_id_orNotAuth), "set incoming id")
-                print("332")
+                
+             
                 if(bytes.decode(comming_nonce2_or_clientId,"utf-8") == self.id_client and comming_client_id_orNotAuth == b'notAuthenticated'):
-                    print("334")
+                    print("Broker disconnect you due to RSA or nonce verification error")
+            
                     #not auth received from broker
 
                     self._dontreconnect = True
@@ -703,14 +741,14 @@ class MyMQTTClass(mqtt.Client):
                     self.nonce2 = comming_nonce2_or_clientId #set nonce2
                     self.comming_client_id = comming_client_id_orNotAuth
 
-                    print("comming_nonce2", comming_nonce2_or_clientId)
-                    print("comming_client_id", comming_client_id_orNotAuth)
-                    print(self.id_client)
+                    print("Nonce 2 received:", comming_nonce2_or_clientId)
+                    print("Client ID received:", comming_client_id_orNotAuth)
+                    #print(self.id_client)
 
 
 
             elif (self.key_establishment_state == 10):
-                print("inside function")
+                print("----Publish message was received from broker (step 10 of the DH)----")
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
 
                 data = msg.payload
@@ -718,7 +756,7 @@ class MyMQTTClass(mqtt.Client):
                 data_len = data[0:2]
                 actual_data = data[2:]
 
-                print(actual_data, "**************actual data")
+                print("Data without length:", actual_data)
 
                 backend = default_backend()
                 decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
@@ -728,15 +766,15 @@ class MyMQTTClass(mqtt.Client):
                 decrypted_data = decryptor.update(actual_data)
                 unpadded = padder.update(decrypted_data) + padder.finalize()
 
-                print("unpadded message 10", unpadded)
+                print("Decrypted message: ", unpadded)
 
                 index1 = unpadded.index(b'::::')
                 comming_nonce3 = unpadded[0:index1]
                 comming_client_id = unpadded[index1+4:]
-                print("377")
+           
                 if(bytes.decode(comming_nonce3,"utf-8") == self.id_client and comming_client_id == b'notAuthenticated'):
+                    print("Broker disconnect you due to nonce verification error at step 9")
                     #not auth received from broker
-                    print("380")
 
                     self._dontreconnect = True
                     self.disconnect()
@@ -751,7 +789,6 @@ class MyMQTTClass(mqtt.Client):
                     else:
                         print("BROKER CANNOT BE AUTHENTICATED")
                         self.disconnect_flag = True
-
                         self.disconnect()
 
 
@@ -761,9 +798,6 @@ class MyMQTTClass(mqtt.Client):
                 if message == self.id_client:
                     print("Key establishment failed. Disconnect, do not reconnect untill establishing a new connection with a new key establishment state.")
                     self._dontreconnect = True #variable set to true to prevent reconnect in this session.
-
-
-                print("inside function")
                 print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
                 print("something went wrong")
 
@@ -771,8 +805,8 @@ class MyMQTTClass(mqtt.Client):
         client.on_message = on_message
 
         if (self.key_establishment_state == 2):
-
             client.subscribe(id_client, 2)
+            print("----Client subscribed to its client id (step 3 of the DH Key Exchange)----")
             self.key_establishment_state = 3
 
 
@@ -785,45 +819,47 @@ class MyMQTTClass(mqtt.Client):
 
         id_client = str(random.randint(0, 100000000))
         self.id_client = id_client
+        self.cert_read_fnc()
+        print("CLIENT ID: " , id_client)
         client = self.connect_mqtt(id_client)
 
         client.loop_start()
-        self.cert_read_fnc()
+       
         while self.key_establishment_state != 2:
             time.sleep(0.1)
         if self.key_establishment_state == 2:
-            await self.subscribe1(client, id_client)
-        print("211", self.key_establishment_state)
+            await self.subscribe_clientID(client, id_client)
+        #print("211", self.key_establishment_state)
         while self.key_establishment_state != 5:
             time.sleep(0.1)
 
-        print("215", self.key_establishment_state)
+        #print("215", self.key_establishment_state)
         if self.key_establishment_state == 5:
-            self.publish1(client)
+            self.publish_step6(client)
             dh_shared = self.client_diffiehellman.generate_shared_key(self.broker_dh_public_key)
-            print("SHARED KEY:   ",dh_shared)
+            print("SHARED DH KEY:   ",dh_shared)
             self.dh_shared_key = dh_shared
-        print("221", self.key_establishment_state)
+        #print("221", self.key_establishment_state)
+
         while self.key_establishment_state != 7:
             time.sleep(0.1)
         if self.key_establishment_state == 7:
-            await self.subscribe1(client, id_client)
-        print("hey1")
+            await self.subscribe_clientID(client, id_client)  #take the publish message from broker at step 8
+      
 
         while self.comming_client_id == None:
             time.sleep(0.1)
         if self.comming_client_id != None:
             incomingClientIdByte = self.comming_client_id
-
-
-            print(type(incomingClientIdByte))
-            print(type(self.id_client))
+            #print(type(incomingClientIdByte))
+            #print(type(self.id_client))
             if (bytes.decode(incomingClientIdByte, 'utf-8') == self.id_client ):
                 self.key_establishment_state = 8
-                print("same id")
-                print("Message encrypted with ")
-                print(self.key_establishment_state)
+                print("The id received from the broker at step 8 is same as the client ID")
+                #print("Message encrypted with ")
+                #print(self.key_establishment_state)
             else:
+                print("The id received from the broker at step 8 is different than the client ID")
                 self.disconnect_flag = True
                 self.disconnect()
 
@@ -831,16 +867,16 @@ class MyMQTTClass(mqtt.Client):
             time.sleep(0.1)
 
         if self.key_establishment_state == 8:
-            print("state 8")
-            self.publish2(client)
+            #print("state 8")
+            self.publish_step9(client)
 
         stopWhile = False #bilgesu modification
 
         while self.key_establishment_state != 10:
             time.sleep(0.1)
         if self.key_establishment_state == 10:
-            print("STATE 10")
-            await self.subscribe1(client, id_client)
+            #print("STATE 10")
+            await self.subscribe_clientID(client, id_client)
 
             while (self.authenticated == False and stopWhile == False): #bilgesu modification
                 time.sleep(0.1)
@@ -850,13 +886,13 @@ class MyMQTTClass(mqtt.Client):
                     stopWhile = True
 
             if (self.authenticated == True):
-                print("authenticated true")
-                self.subscribe2(client, id_client)
+                #print("authenticated true")
+                self.subscribe_encrypted_clientID(client, id_client)
                 self.choice_token_state = 1
 
 
             if (self.authenticated == True):
-                print("Authenticated. Key establishment finished.")
+                #print("Key establishment finished.")
                 #self.publishForChoiceToken(client)  #error in the function
                 return client
             else:
@@ -869,25 +905,22 @@ class MyMQTTClass(mqtt.Client):
 
     async def run2(self,client,topicname_list):
 
-        print("-------------------run2, topicname: ")
-
+        print("Topic names received from the gui:", topicname_list)
         for topicname1 in topicname_list:
-
-
             if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname1] = 0
                 self.publishForChoiceToken(client,topicname1)
-            print("---879 length of topicname1=",len(topicname1))
-            print("---879 self.choice_state_dict[topicname1]=",self.choice_state_dict[topicname1])
+            #print("---879 length of topicname1=",len(topicname1))
+            #print("---879 self.choice_state_dict[topicname1]=",self.choice_state_dict[topicname1])
             while (self.choice_state_dict[topicname1] != 1 and self.disconnect_flag == False):
                     time.sleep(0.1)
             if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
-                self.subscribe2(client, self.id_client)
+                self.subscribe_encrypted_clientID(client, self.id_client)
 
             while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False):
                     time.sleep(0.1)
             if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
-                self.subscribe3(client, topicname1)
+                self.subscribe_real_topics(client, topicname1)
 
             if (self.disconnect_flag == False) :
                 self.subscribe4(client)
@@ -895,7 +928,9 @@ class MyMQTTClass(mqtt.Client):
         return client
 
     async def run3(self,client,topicname1, message):
-            print("-------------------run3, topicname: ",topicname1)
+            #print("-------------------run3, topicname: ",topicname1)
+            print("Topic name received from the gui:", topicname1)
+            print("Message received from the gui:", message)
 
             if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname1] = 0
@@ -904,13 +939,13 @@ class MyMQTTClass(mqtt.Client):
             while (self.choice_state_dict[topicname1] != 1 and self.disconnect_flag == False):
                     time.sleep(0.1)
             if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
-                self.subscribe2(client, self.id_client)
+                self.subscribe_encrypted_clientID(client, self.id_client)
 
             while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False):
                     time.sleep(0.1)
 
             if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
-                self.publish3(client, topicname1, message)
+                self.publish_real_topics(client, topicname1, message)
 
             if (self.disconnect_flag == False) :
                 self.subscribe4(client)
