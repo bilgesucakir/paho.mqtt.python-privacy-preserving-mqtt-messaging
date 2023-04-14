@@ -260,10 +260,10 @@ class MyMQTTClass(mqtt.Client):
 
 
         #distorting signature on purpose
-        '''
-        signature = b'distortedSignature'
-        print("distrotred signature 1:", signature)
-        '''
+        
+        #signature = b'distortedSignature'
+        #print("distrotred signature 1:", signature)
+        
 
         topic_publish = topicName_byte + b'::::' + signature
 
