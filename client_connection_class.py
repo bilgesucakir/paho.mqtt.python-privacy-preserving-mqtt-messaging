@@ -62,6 +62,8 @@ class MyMQTTClass(mqtt.Client):
         self.choice_token_state = 0
         self.choice_state_dict = {}
 
+        self.fail_to_verify_mac = False
+
         #fix for now, will be checked later
         self._sock = None
         self._sockpairR = None
@@ -319,6 +321,12 @@ class MyMQTTClass(mqtt.Client):
             signature = h.finalize()
             #print(signature)
 
+            #bilgesu modificaiton distoring signature on purpose to see the fail case
+            #signature = b'distortedSignature'
+            #this line will be removed
+            #print("DISTORTED SIGNATURE: ", signature)
+
+
             topicName = message + b'::::' + signature
             #print(topicName)
 
@@ -343,6 +351,13 @@ class MyMQTTClass(mqtt.Client):
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(topicWanted)
             signature = h.finalize()
+
+
+            #bilgesu modificaiton distoring signature on purpose to see the fail case
+            #signature = "distortedSignature"
+            #this line will be removed
+
+
             payload = topicWanted + b'::::' + signature
             encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
@@ -389,28 +404,34 @@ class MyMQTTClass(mqtt.Client):
             topicName = topic_and_choiceTokens[0:index1]
             choiceToken = topic_and_choiceTokens[index1+4:]
 
-            print("Topic name:", topicName, " and its choiceToken: ", choiceToken)
-
-            h = hmac.HMAC(self.session_key, hashes.SHA256())
-            h.update(topic_and_choiceTokens)
-            signature = h.finalize()
-
-            if(mac_of_choice_token == signature):
-                print("The content of the message has not been changed. Mac is correct ")
-                topicName_str = bytes.decode(topicName)
-
-                #print("choicetoken 367: ", choiceToken)
-
-                choiceTokenHex = choiceToken.hex()
-
-                #print("choicetokenhex  371:", choiceTokenHex)
+            #bilgesu: modification
+            if topicName == self.id_client and choiceToken == "signVerifyFailed":
+                print("Received signVerifyFailed, wont get choicetoken. Following should be empty:", self.choiceTokenDictionary[topicName_str])
 
 
-                self.choiceTokenDictionary[topicName_str] = choiceTokenHex
-                #print(self.choiceTokenDictionary)
-                self.choice_state_dict[topicName_str] = 2
             else:
-                print("The content of the message has been changed. Mac is not correct")
+                #print("choiceToken: ", choiceToken)
+                print("Topic name:", topicName, " and its choiceToken: ", choiceToken)
+                h = hmac.HMAC(self.session_key, hashes.SHA256())
+                h.update(topic_and_choiceTokens)
+                signature = h.finalize()
+
+                if(mac_of_choice_token == signature):
+                    print("The content of the message has not been changed. Mac is correct ")
+                    topicName_str = bytes.decode(topicName)
+
+                    #print("choicetoken 367: ", choiceToken)
+
+                    choiceTokenHex = choiceToken.hex()
+
+                    #print("choicetokenhex  371:", choiceTokenHex)
+
+
+                    self.choiceTokenDictionary[topicName_str] = choiceTokenHex
+                    print(self.choiceTokenDictionary)
+                    self.choice_state_dict[topicName_str] = 2
+                else:
+                    print("The content of the message has been changed. Mac is not correct")
 
         client.on_message = on_message
 
@@ -735,6 +756,8 @@ class MyMQTTClass(mqtt.Client):
                     self.disconnect_flag = True
 
                     self.disconnect()
+                
+                
 
 
                 else:
@@ -910,13 +933,18 @@ class MyMQTTClass(mqtt.Client):
             if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname1] = 0
                 self.publishForChoiceToken(client,topicname1)
+
             #print("---879 length of topicname1=",len(topicname1))
             #print("---879 self.choice_state_dict[topicname1]=",self.choice_state_dict[topicname1])
+
             while (self.choice_state_dict[topicname1] != 1 and self.disconnect_flag == False):
                     time.sleep(0.1)
             if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
-                self.subscribe_encrypted_clientID(client, self.id_client)
 
+                #if signVErifyFailed received do not send 
+                self.subscribe2(client, self.id_client)
+
+            #burada fialed to verify maci kontrol et. True ise tekrardan subscribe olma seçeneği gelmeli. 
             while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False):
                     time.sleep(0.1)
             if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
