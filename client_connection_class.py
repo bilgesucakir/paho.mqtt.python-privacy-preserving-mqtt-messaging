@@ -305,7 +305,7 @@ class MyMQTTClass(mqtt.Client):
             #bilgesu modificaiton distoring signature on purpose to see the fail case
             #signature = b'distortedSignature'
             #this line will be removed
-            #print("DISTORTED SIGNATURE: ", signature)
+            #print("DISTORTED SIGNATURE (topic): ", signature)
 
 
             topicName = message + b'::::' + signature
@@ -335,8 +335,9 @@ class MyMQTTClass(mqtt.Client):
 
 
             #bilgesu modificaiton distoring signature on purpose to see the fail case
-            #signature = "distortedSignature"
+            #signature = b'distortedSignature'
             #this line will be removed
+            #print("DISTORTED SIGNATURE (payload): ", signature)
 
 
             payload = topicWanted + b'::::' + signature
@@ -356,12 +357,13 @@ class MyMQTTClass(mqtt.Client):
 
     def subscribe2(self, client: mqtt, id_client):
         def on_message(client, userdata, msg):
-            print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+            print(f"****************************ALL DATA `{msg.payload}` from `{msg.topic}` topic")
             data = msg.payload
             data_len = data[0:2]
             actual_data = data[2:]
             print(data_len)
-            print(actual_data)
+            print("RECEIVED ENCRYPTED 364******** :", actual_data)
+            print("\nSESSION KEY TO BE USED: ", self.session_key)
 
             backend = default_backend()
             decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
@@ -382,8 +384,10 @@ class MyMQTTClass(mqtt.Client):
             choiceToken = topic_and_choiceTokens[index1+4:]
 
             #bilgesu: modification
-            if topicName == self.id_client and choiceToken == "signVerifyFailed":
-                print("Received signVerifyFailed, wont get choicetoken. Following should be empty:", self.choiceTokenDictionary[topicName_str])
+            if topicName == bytes(self.id_client, 'utf-8') and choiceToken == b'signVerifyFailed':
+
+                self.fail_to_verify_mac = True
+                print("Received signVerifyFailed, wont get choicetoken.")
 
 
             else:
@@ -912,14 +916,22 @@ class MyMQTTClass(mqtt.Client):
                 self.subscribe2(client, self.id_client)
 
             #burada fialed to verify maci kontrol et. True ise tekrardan subscribe olma seçeneği gelmeli. 
-            while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False):
+
+            stop = False
+            while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
+                    if(self.fail_to_verify_mac):#wont be changed back to False in loop for now
+                        print("fail to verify mac received")
+                        stop = True
                     time.sleep(0.1)
             if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
                 self.subscribe3(client, topicname1)
 
-            if (self.disconnect_flag == False) :
+            if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
                 self.subscribe4(client)
 
+
+        #make self.fail_to_verify_mac flag false again for future subscriptions.
+        self.fail_to_verify_mac = False
         return client
 
     async def run3(self,client,topicname1, message):
