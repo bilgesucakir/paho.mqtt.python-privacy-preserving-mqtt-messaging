@@ -1203,7 +1203,7 @@ class Client(object):
 
         return self.loop_misc()
 
-    def publish(self, topic, payload=None, qos=0, retain=False, properties=None):
+    def publish(self, topic, payload=None, qos=0, retain=False, properties=None, msgid = None):
         """Publish a message on a topic.
 
         This causes a message to be sent to the broker and subsequently from
@@ -1268,8 +1268,16 @@ class Client(object):
 
         if len(local_payload) > 268435455:
             raise ValueError('Payload too large.')
-
-        local_mid = self._mid_generate()
+        
+        #local_mid = self._mid_generate()
+        
+        #modification start
+        if (msgid == None):
+            local_mid = self._mid_generate()
+        else: 
+            local_mid = msgid
+            print("local_mid", local_mid)
+        #modification end
 
         if qos == 0:
             info = MQTTMessageInfo(local_mid)
@@ -1392,7 +1400,7 @@ class Client(object):
 
         return self._send_disconnect(reasoncode, properties)
 
-    def subscribe(self, topic, qos=0, options=None, properties=None):
+    def subscribe(self, topic, qos=0, options=None, properties=None, msgid = None):
         """Subscribe the client to one or more topics.
 
         This function may be called in three different ways (and a further three for MQTT v5.0):
@@ -1527,8 +1535,12 @@ class Client(object):
 
         if self._sock is None:
             return (MQTT_ERR_NO_CONN, None)
+        if msgid == None:
+            mid = self._mid_generate()
+        else:
+            mid = msgid
 
-        return self._send_subscribe(False, topic_qos_list, properties)
+        return self._send_subscribe(False, topic_qos_list, mid, properties,)
 
     def unsubscribe(self, topic, properties=None):
         """Unsubscribe the client from one or more topics.
@@ -2938,7 +2950,7 @@ class Client(object):
 
         return self._packet_queue(command, packet, 0, 0)
 
-    def _send_subscribe(self, dup, topics, properties=None):
+    def _send_subscribe(self, dup, topics, mid, properties=None, ):
         remaining_length = 2
         if self._protocol == MQTTv5:
             if properties is None:
@@ -2953,7 +2965,8 @@ class Client(object):
         packet = bytearray()
         packet.append(command)
         self._pack_remaining_length(packet, remaining_length)
-        local_mid = self._mid_generate()
+        #local_mid = self._mid_generate()
+        local_mid = mid
         packet.extend(struct.pack("!H", local_mid))
 
         if self._protocol == MQTTv5:

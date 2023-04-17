@@ -25,6 +25,7 @@ from binascii import unhexlify
 
 
 
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("client_logging")
 
@@ -226,7 +227,7 @@ class MyMQTTClass(mqtt.Client):
 
         #print("MESSAGE (step 6 of the DH Key Exchange): " , data_to_sent)
 
-        client.publish("AuthenticationTopic", data_to_sent, qos = 1)
+        client.publish("AuthenticationTopic", data_to_sent, qos = 2)
 
         self.key_establishment_state = 6
 
@@ -261,7 +262,7 @@ class MyMQTTClass(mqtt.Client):
         logger.log(logging.INFO, b'Encrypted message (step 9 of the DH Key Exchange): ' + encrypted_text)
         
 
-        client.publish("AuthenticationTopic", encrypted_text , qos = 1)
+        client.publish("AuthenticationTopic", encrypted_text , qos = 2)
 
         self.key_establishment_state = 9
         return client
@@ -330,7 +331,7 @@ class MyMQTTClass(mqtt.Client):
         #print("Message after authenticated encyption with the session key: ", encrypted_message2)
         logger.log(logging.INFO, b'Message after authenticated encyption with the session key: '+ encrypted_message2)
 
-        client.publish(encrypted_topic_hex, encrypted_message2 , qos = 1)
+        client.publish(encrypted_topic_hex, encrypted_message2 , qos = 2)
 
 
         return client
@@ -380,21 +381,12 @@ class MyMQTTClass(mqtt.Client):
             #print("topicNameEncryptedByte: ", topicNameEncryptedByte)
             #print("topicNameEncryptedHex: ", topicNameEncryptedHex)
 
-            msgid = self._mid_generate()
-            retainFlag = False
-            print("before msgid", msgid)
-
-            
-            messagex = topicname1x + self.id_client + "1False" + str(msgid)
-            print("messagex:", messagex )
-            message_byte = force_bytes(messagex)
-
 
             #topicWanted = b'light'
-            
-            print("message_byte : ",message_byte)
+            topicWanted = force_bytes(topicname1x)
+            #print("topicWanted : ",topicWanted)
             h = hmac.HMAC(self.session_key, hashes.SHA256())
-            h.update(message_byte)
+            h.update(topicWanted)
             signature = h.finalize()
 
 
@@ -402,8 +394,6 @@ class MyMQTTClass(mqtt.Client):
             #signature = "distortedSignature"
             #this line will be removed
 
-
-            topicWanted = force_bytes(topicname1x)
 
             payload = topicWanted + b'::::' + signature
             encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
@@ -417,15 +407,17 @@ class MyMQTTClass(mqtt.Client):
             logger.log(logging.INFO, b'Payload contains the topic name for which a choice token is asked: '+ topicWanted)
             logger.log(logging.INFO, b'Authenticated encryption version of the payload: ' + payloadByte)
 
+            clientobj = mqtt.Client
+            msgid = clientobj._mid_generate()
+            retainFlag = False
+           
+
             
-           
-           
-           
-            
-            obj1 = client.publish(topicNameEncryptedHex, payloadByte , qos = 1, msgid = msgid, retain = False)
-            print("msgid", obj1.mid)
-            print("retain", retainFlag)
+            client.publish(topicNameEncryptedHex, payloadByte , qos = 2, retain = retainFlag)
+            #print("msgid", msgid )
+            #print("retain", retainFlag)
             print("retain")
+            #logger.log(logging.INFO, retainFlag)
             #print("----Publish was sent to 'choiceToken' topic (step 2 of choice token schema)----")
             logger.log(logging.INFO, "----Publish was sent to 'choiceToken' topic (step 2 of choice token schema)----")
             self.choice_state_dict[topicname1x] = 1
@@ -511,6 +503,7 @@ class MyMQTTClass(mqtt.Client):
 
             message_str = self.id_client
             message = bytes(message_str, 'utf-8')
+            #mac_message = message + 
 
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(message)
@@ -525,12 +518,7 @@ class MyMQTTClass(mqtt.Client):
             topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
             topicNameEncryptedHex = topicNameEncryptedByte.hex()
 
-            msgid = self._mid_generate()
-            retainFlag = False
-            print("before msgid sub", msgid)
-
-            obj1 = client.subscribe(topicNameEncryptedHex, 1, msgid = msgid )
-        
+            client.subscribe(topicNameEncryptedHex, 2)
             #print("----Client was subscribed to its encrypted clientID (step 1 of the choice token schema)")
             #print("Authenticated Encryption version of the clientID: ", topicNameEncryptedHex )
             logger.log(logging.INFO, "----Client was subscribed to its encrypted clientID (step 1 of the choice token schema)")
@@ -655,7 +643,7 @@ class MyMQTTClass(mqtt.Client):
             #print("Authenticated encryption version of the topic:" ,topicNameEncryptedHex )
             logger.log(logging.INFO, "Authenticated encryption version of the topic:" + topicNameEncryptedHex )
 
-            client.subscribe(topicNameEncryptedHex, 1)
+            client.subscribe(topicNameEncryptedHex, 2)
             #print("Subscribed to: " ,topicNameEncryptedHex )
             logger.log(logging.INFO, "Subscribed to: " + topicNameEncryptedHex )
             self.choice_state_dict[topicname] = 3
@@ -988,7 +976,7 @@ class MyMQTTClass(mqtt.Client):
         client.on_message = on_message
 
         if (self.key_establishment_state == 2):
-            client.subscribe(id_client, 1)
+            client.subscribe(id_client, 2)
             #print("----Client subscribed to its client id (step 3 of the DH Key Exchange)----")
             logger.log(logging.INFO, "----Client subscribed to its client id (step 3 of the DH Key Exchange)----")
             self.key_establishment_state = 3
