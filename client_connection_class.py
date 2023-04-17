@@ -289,6 +289,13 @@ class MyMQTTClass(mqtt.Client):
         h.update(topicName_byte)
         signature = h.finalize()
 
+
+        #distorting signature on purpose
+        
+        #signature = b'distortedSignature'
+        #print("distrotred signature 1:", signature)
+        
+
         topic_publish = topicName_byte + b'::::' + signature
 
         backend = default_backend()
@@ -319,6 +326,13 @@ class MyMQTTClass(mqtt.Client):
         h = hmac.HMAC(self.session_key, hashes.SHA256())
         h.update(encrypted_message_byte)
         signature2 = h.finalize()
+
+        #distorting signature on purpose
+        
+        '''
+        signature2 = b'distortedSignature'
+        print("distrotred signature 2:", signature2)
+        '''
 
         message_publish = encrypted_message_byte + b'::::' + signature2
 
@@ -360,7 +374,7 @@ class MyMQTTClass(mqtt.Client):
             #bilgesu modificaiton distoring signature on purpose to see the fail case
             #signature = b'distortedSignature'
             #this line will be removed
-            #print("DISTORTED SIGNATURE: ", signature)
+            #print("DISTORTED SIGNATURE (topic): ", signature)
 
 
             topicName = message + b'::::' + signature
@@ -399,8 +413,9 @@ class MyMQTTClass(mqtt.Client):
 
 
             #bilgesu modificaiton distoring signature on purpose to see the fail case
-            #signature = "distortedSignature"
+            #signature = b'distortedSignature'
             #this line will be removed
+            #print("DISTORTED SIGNATURE (payload): ", signature)
 
 
             topicWanted = force_bytes(topicname1x)
@@ -468,9 +483,11 @@ class MyMQTTClass(mqtt.Client):
             choiceToken = topic_and_choiceTokens[index1+4:]
 
             #bilgesu: modification
-            if topicName == self.id_client and choiceToken == "signVerifyFailed":
-                #print("Received signVerifyFailed, wont get choicetoken. Following should be empty:", self.choiceTokenDictionary[topicName_str])
-                logger.log(logging.INFO, "Received signVerifyFailed, wont get choicetoken. Following should be empty:" + self.choiceTokenDictionary[topicName_str])
+            if topicName == bytes(self.id_client, 'utf-8') and choiceToken == b'signVerifyFailed':
+
+                self.fail_to_verify_mac = True
+                print("Received signVerifyFailed, wont get choicetoken.")
+
 
             else:
                 #print("choiceToken: ", choiceToken)
@@ -671,7 +688,7 @@ class MyMQTTClass(mqtt.Client):
 
 
 
-    def subscribe4(self, client: mqtt):
+    def subscribe4(self, client: mqtt, is_after_publish:bool):
         def on_message(client, userdata, msg):
             #print("----Publish message was received from broker")
             #print(f"Encrypted payload: `{msg.payload}` from  encrypted topic: `{msg.topic}` ")
@@ -692,27 +709,10 @@ class MyMQTTClass(mqtt.Client):
             mac_of_topic_name = unpadded[index1+4:]
 
             topic_name_str = bytes.decode(topic_name)
-            choiceTokenhex = self.choiceTokenDictionary[topic_name_str]
-            choiceToken = unhexlify(choiceTokenhex)
-            #print("Choice token from dictionary:",self.choiceTokenDictionary[topic_name_str])
-            #print("Topic name from dictionary:",topic_name_str)
-           
+            
 
-            h = hmac.HMAC(self.session_key, hashes.SHA256())
-            h.update(topic_name)
-            signature = h.finalize()
-            #print("Received MAC of topic name: ", mac_of_topic_name)
-            #print("Calculated MAC of topic name: ", signature )
-            logger.log(logging.INFO, b'Received MAC of topic name: '+ mac_of_topic_name)
-            logger.log(logging.INFO, b'Calculated MAC of topic name: '+ signature )
-
-            if(signature == mac_of_topic_name):
-                #print("The content of the topic name is not changed. Mac of the topic name is correct")
-                #print("Decrypted topic name: ", topic_name_str)
-                #print("Choice token of the topic: ", choiceTokenhex )
-                logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct")
-                logger.log(logging.INFO, "Decrypted topic name: "+ topic_name_str)
-                logger.log(logging.INFO, "Choice token of the topic: "+ choiceTokenhex )
+            if topic_name_str == self.id_client: #receiving bad mac here.
+                
 
                 data = msg.payload
                 data_len = data[0:2]
@@ -722,42 +722,83 @@ class MyMQTTClass(mqtt.Client):
                 padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
                 decrypted_data = decryptor.update(actual_data)
                 unpadded = padder.update(decrypted_data) + padder.finalize()
+
                 index1 = unpadded.index(b'::::')
+                piece_1 = unpadded[0:index1]
+                piece_2 = unpadded[index1+4:]   
 
-                message_encrypted_with_ct = unpadded[0:index1]
-                mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
-                #print("Message after decryption with session key: ", message_encrypted_with_ct)
-                logger.log(logging.INFO, b'Message after decryption with session key: '+ message_encrypted_with_ct)
-                choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
-                #print("choicetoken_key ", choicetoken_key)
+                index2 = piece_2.index(b'::::')
 
-                decryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).decryptor()
-                padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).unpadder()
-                decrypted_data2 = decryptor.update(message_encrypted_with_ct)
-                unpadded_message = padder.update(decrypted_data2) + padder.finalize()
-                #print("Message after decryption with choice token: ", unpadded_message, " from ", topic_name_str)
+                message_received = piece_2[0:index2]
+                mac_replacer = piece_2[index2+4:]
+
+                print("Received the following:", piece_1, "and", message_received, "and", mac_replacer)
+
+                if piece_1 == bytes(self.id_client, 'utf-8') and message_received == b'signVerifyFailed':
+
+                    self.fail_to_verify_mac = True
+                    if is_after_publish:
+                        print("Received signVerifyFailed, your published message won't be relayed to the subscribers.")
+                    else:
+                        print("Received signVerifyFailed")
+
+
+            else:
+                print()
+
+                choiceTokenhex = self.choiceTokenDictionary[topic_name_str]
+                choiceToken = unhexlify(choiceTokenhex)
+                #print("Choice token from dictionary:",self.choiceTokenDictionary[topic_name_str])
+                #print("Topic name from dictionary:",topic_name_str)
+                print("Decrypted topic name: ", topic_name_str ," and its mac: ", mac_of_topic_name)
+                print("Choice token of the topic: ", choiceTokenhex )
 
                 h = hmac.HMAC(self.session_key, hashes.SHA256())
-                h.update(message_encrypted_with_ct)
+                h.update(topic_name)
                 signature = h.finalize()
                 #print("Received MAC of payload: ", mac_of_payload)
                 #print("Calculated MAC of payload: ", signature )
                 logger.log(logging.INFO, b'Received MAC of payload: '+ mac_of_payload)
                 logger.log(logging.INFO, b'Calculated MAC of payload: '+ signature )
 
-                if(signature == mac_of_payload):
-                    #print("The content of the payload is not changed. Mac of the payload is correct")
-                    #print("Message after decryption with choice token: ", unpadded_message, " from ", topic_name_str)
-                    logger.log(logging.INFO, "The content of the payload is not changed. Mac of the payload is correct")
-                    logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
-                    #print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
+                if(signature == mac_of_topic_name):
+                    print("The content of the topic name is not changed")
 
+                    data = msg.payload
+                    data_len = data[0:2]
+                    actual_data = data[2:]
+
+                    decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
+                    padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
+                    decrypted_data = decryptor.update(actual_data)
+                    unpadded = padder.update(decrypted_data) + padder.finalize()
+                    index1 = unpadded.index(b'::::')
+
+                    message_encrypted_with_ct = unpadded[0:index1]
+                    mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
+                    print("Message after decryption with session key: ", message_encrypted_with_ct)
+
+                    choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
+                    #print("choicetoken_key ", choicetoken_key)
+
+                    decryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).decryptor()
+                    padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).unpadder()
+                    decrypted_data2 = decryptor.update(message_encrypted_with_ct)
+                    unpadded_message = padder.update(decrypted_data2) + padder.finalize()
+                    print("Message after decryption with choice token: ", unpadded_message, " from ", topic_name_str)
+
+                    h = hmac.HMAC(self.session_key, hashes.SHA256())
+                    h.update(message_encrypted_with_ct)
+                    signature = h.finalize()
+
+                    if(signature == mac_of_payload):
+                        print("The content of the payload is not changed. Mac of the payload is correct")
+                        #print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
+
+                    else:
+                        print("The content of the payload is changed, Mac of the payload is not correct")
                 else:
-                    #print("The content of the payload is changed, Mac of the payload is not correct")
-                    logger.log(logging.INFO, "The content of the payload is changed, Mac of the payload is not correct")
-            else:
-                #print("The content of the topic name is changed. Mac of the topic name is correct")
-                logger.log(logging.INFO, "The content of the topic name is changed. Mac of the topic name is correct")
+                    print("The content of the topic name is changed. Mac of the topic name is correct")
 
 
         client.on_message = on_message
@@ -1118,14 +1159,22 @@ class MyMQTTClass(mqtt.Client):
                 self.subscribe_encrypted_clientID(client, self.id_client)
 
             #burada fialed to verify maci kontrol et. True ise tekrardan subscribe olma seçeneği gelmeli. 
-            while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False):
-                    time.sleep(0.1)
+
+            stop = False
+            while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
+                if(self.fail_to_verify_mac):#wont be changed back to False in loop for now
+                    print("fail to verify mac message received")
+                    stop = True
+                time.sleep(0.1)
             if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
                 self.subscribe_real_topics(client, topicname1)
 
-            if (self.disconnect_flag == False) :
-                self.subscribe4(client)
+            if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
+                self.subscribe4(client, False)
 
+
+        #make self.fail_to_verify_mac flag false again for future subscriptions.
+        self.fail_to_verify_mac = False
         return client
 
     async def run3(self,client,topicname1, message):
@@ -1144,15 +1193,22 @@ class MyMQTTClass(mqtt.Client):
             if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
                 self.subscribe_encrypted_clientID(client, self.id_client)
 
-            while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False):
-                    time.sleep(0.1)
+            stop = False
+            while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
+                    
+                if(self.fail_to_verify_mac):#wont be changed back to False in loop for now
+                    print("fail to verify mac message received")
+                    stop = True
+                time.sleep(0.1)
 
             if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
                 self.publish_real_topics(client, topicname1, message)
 
-            if (self.disconnect_flag == False) :
-                self.subscribe4(client)
+            if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
+                self.subscribe4(client, True) #bool added for diplay reasons at the terminal.
 
+
+            self.fail_to_verify_mac = False
             return client
         #client.loop_stop()
 
