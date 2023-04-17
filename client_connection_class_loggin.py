@@ -381,18 +381,29 @@ class MyMQTTClass(mqtt.Client):
             #print("topicNameEncryptedByte: ", topicNameEncryptedByte)
             #print("topicNameEncryptedHex: ", topicNameEncryptedHex)
 
+            clientobj = mqtt.Client
+            msgid = self._mid_generate()
+            retainFlag = False
+            
+            messagex = topicname1x + self.id_client + "1False" + str(msgid)
+            print("messagex:", messagex )
+            message_byte = force_bytes(messagex)
+            
+           
+
 
             #topicWanted = b'light'
-            topicWanted = force_bytes(topicname1x)
+           
             #print("topicWanted : ",topicWanted)
             h = hmac.HMAC(self.session_key, hashes.SHA256())
-            h.update(topicWanted)
+            h.update(message_byte)
             signature = h.finalize()
 
 
             #bilgesu modificaiton distoring signature on purpose to see the fail case
             #signature = "distortedSignature"
             #this line will be removed
+            topicWanted = force_bytes(topicname1x)
 
 
             payload = topicWanted + b'::::' + signature
@@ -407,15 +418,12 @@ class MyMQTTClass(mqtt.Client):
             logger.log(logging.INFO, b'Payload contains the topic name for which a choice token is asked: '+ topicWanted)
             logger.log(logging.INFO, b'Authenticated encryption version of the payload: ' + payloadByte)
 
-            clientobj = mqtt.Client
-            msgid = clientobj._mid_generate()
-            retainFlag = False
            
 
             
-            client.publish(topicNameEncryptedHex, payloadByte , qos = 2, retain = retainFlag)
-            #print("msgid", msgid )
-            #print("retain", retainFlag)
+            obj1 = client.publish(topicNameEncryptedHex, payloadByte , qos = 1, retain = retainFlag, msgid =msgid)
+            print("msgid", obj1.mid)
+            print("retain", retainFlag)
             print("retain")
             #logger.log(logging.INFO, retainFlag)
             #print("----Publish was sent to 'choiceToken' topic (step 2 of choice token schema)----")

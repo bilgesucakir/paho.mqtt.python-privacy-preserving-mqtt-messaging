@@ -14,8 +14,8 @@ from tkinter import ttk, VERTICAL, HORIZONTAL, N, S, E, W
 from tkinter import  messagebox
 from tkinter.constants import DISABLED, NORMAL
 
-from client_connection_class import MyMQTTClass
-#from client55connection_class import deneme
+from client_connection_class_loggin import MyMQTTClass
+
 from client_logging import *
 
 import asyncio
