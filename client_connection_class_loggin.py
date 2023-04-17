@@ -283,6 +283,7 @@ class MyMQTTClass(mqtt.Client):
         #print("224 Choice token from dictionary:",self.choiceTokenDictionary[topicName])
         #print("225 Topic name from dictionary:",topicName)
         #print("Choice token of the topic: ", choiceTokenhex )
+        
 
 
 
@@ -316,9 +317,15 @@ class MyMQTTClass(mqtt.Client):
         #print("Message after encryption with the choice token: ", encrypted_message)
         logger.log(logging.INFO, b'Message after encryption with the choice token: '+ encrypted_message)
 
+        qos = 1
+        retainFlag = False
+        msgid = self._mid_generate()
+        hash_message_str = str(qos) + str(retainFlag) + str(msgid)
+        hash_message_bytes = encrypted_message_byte + force_bytes(hash_message_str)
+
 
         h = hmac.HMAC(self.session_key, hashes.SHA256())
-        h.update(encrypted_message_byte)
+        h.update(hash_message_bytes)
         signature2 = h.finalize()
 
         message_publish = encrypted_message_byte + b'::::' + signature2
@@ -331,7 +338,7 @@ class MyMQTTClass(mqtt.Client):
         #print("Message after authenticated encyption with the session key: ", encrypted_message2)
         logger.log(logging.INFO, b'Message after authenticated encyption with the session key: '+ encrypted_message2)
 
-        client.publish(encrypted_topic_hex, encrypted_message2 , qos = 2)
+        client.publish(encrypted_topic_hex, encrypted_message2 , qos = qos, retain = retainFlag, msgid=msgid)
 
 
         return client
@@ -384,8 +391,9 @@ class MyMQTTClass(mqtt.Client):
             clientobj = mqtt.Client
             msgid = self._mid_generate()
             retainFlag = False
+            qos = 1
             
-            messagex = topicname1x + self.id_client + "1False" + str(msgid)
+            messagex = topicname1x + self.id_client + str(qos)+ str(retainFlag) + str(msgid)
             print("messagex:", messagex )
             message_byte = force_bytes(messagex)
             
@@ -421,7 +429,7 @@ class MyMQTTClass(mqtt.Client):
            
 
             
-            obj1 = client.publish(topicNameEncryptedHex, payloadByte , qos = 1, retain = retainFlag, msgid =msgid)
+            obj1 = client.publish(topicNameEncryptedHex, payloadByte , qos = qos, retain = retainFlag, msgid =msgid)
             print("msgid", obj1.mid)
             print("retain", retainFlag)
             print("retain")
@@ -475,10 +483,19 @@ class MyMQTTClass(mqtt.Client):
             else:
                 #print("choiceToken: ", choiceToken)
                 #print("Topic name:", topicName, " and its choiceToken: ", choiceToken.hex())
+                print("msg.qos + msg.retain + msg.mid: ", msg.qos , msg.retain , msg.mid)
+                if msg.retain == 0:
+                    retainFlag = False
+                else:
+                    retainFlag = False
+                message_str = str(msg.qos) + str(retainFlag) + str(msg.mid)
+                message_bytes = topic_and_choiceTokens + force_bytes(message_str)
+                print("message_bytes: ", message_bytes)
+               
                 logger.log(logging.INFO, b'Topic name: '+ topicName )
                 logger.log(logging.INFO, "Its choiceToken: " + choiceToken.hex())
                 h = hmac.HMAC(self.session_key, hashes.SHA256())
-                h.update(topic_and_choiceTokens)
+                h.update(message_bytes)
                 signature = h.finalize()
 
                 #print("Received MAC of the payload: ", mac_of_choice_token )
@@ -509,12 +526,21 @@ class MyMQTTClass(mqtt.Client):
 
         if (self.choice_token_state == 0):
 
-            message_str = self.id_client
-            message = bytes(message_str, 'utf-8')
+            
+            
             #mac_message = message + 
+            msgid = self._mid_generate()
+            print("before msgid sub", msgid)
+            qos = 1
+            message_str = self.id_client + str(qos) + str(msgid)
+            print("message_str: ", message_str)
+            message_hash = bytes(message_str, 'utf-8')
+         
+            message = bytes(self.id_client, 'utf-8')
+            print("message :", message)
 
             h = hmac.HMAC(self.session_key, hashes.SHA256())
-            h.update(message)
+            h.update(message_hash)
             signature = h.finalize()
 
             topicName = message + b'::::' + signature
@@ -526,7 +552,7 @@ class MyMQTTClass(mqtt.Client):
             topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
             topicNameEncryptedHex = topicNameEncryptedByte.hex()
 
-            client.subscribe(topicNameEncryptedHex, 2)
+            client.subscribe(topicNameEncryptedHex, qos= qos, msgid = msgid)
             #print("----Client was subscribed to its encrypted clientID (step 1 of the choice token schema)")
             #print("Authenticated Encryption version of the clientID: ", topicNameEncryptedHex )
             logger.log(logging.INFO, "----Client was subscribed to its encrypted clientID (step 1 of the choice token schema)")
@@ -607,15 +633,25 @@ class MyMQTTClass(mqtt.Client):
                 logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
                 logger.log(logging.INFO, "Topic name: "+  topic_name_str)
 
+                if msg.retain == 0:
+                    retainFlag = False
+                else: 
+                    retainFlag = True
+
+                message_hash_str = str(msg.qos) + str(retainFlag) + str(msg.mid)
+                message_bytes_hash = message_encrypted_with_ct + force_bytes(message_hash_str)
+                print("message_hash_str ", message_hash_str)
+                print("message_bytes_hash ", message_bytes_hash)
+
                 h = hmac.HMAC(self.session_key, hashes.SHA256())
-                h.update(message_encrypted_with_ct)
+                h.update(message_bytes_hash)
                 signature = h.finalize()
             
 
                 if(signature == mac_of_payload):
                     #print("The content of the payload is not changed, Mac of the payload is correct")
                     logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
-                    #print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
+                    #print("MESSAGE: " ,unpadded_message, "FROM ", topic_namepub )
 
                 else:
                     #print("The content of the payload is changed, Mac of the payload is not correct")
@@ -633,8 +669,15 @@ class MyMQTTClass(mqtt.Client):
             #print("----Function to subscribe to topic: ", topicname )
             logger.log(logging.INFO, "----Function to subscribe to topic: "+ topicname )
             topicName_byte = force_bytes(topicname)
+            msgid = self._mid_generate()
+            print("before msgid sub", msgid)
+            qos = 1
+
+            topicname_str = topicname + str(qos) + str(msgid)
+            hash_bytes = force_bytes(topicname_str)
+
             h = hmac.HMAC(self.session_key, hashes.SHA256())
-            h.update(topicName_byte)
+            h.update(hash_bytes)
             signature = h.finalize()
             #print("MAC of the topic: ", signature )
             logger.log(logging.INFO, b'MAC of the topic: '+ signature )
@@ -651,7 +694,7 @@ class MyMQTTClass(mqtt.Client):
             #print("Authenticated encryption version of the topic:" ,topicNameEncryptedHex )
             logger.log(logging.INFO, "Authenticated encryption version of the topic:" + topicNameEncryptedHex )
 
-            client.subscribe(topicNameEncryptedHex, 2)
+            client.subscribe(topicNameEncryptedHex, qos=qos, msgid = msgid)
             #print("Subscribed to: " ,topicNameEncryptedHex )
             logger.log(logging.INFO, "Subscribed to: " + topicNameEncryptedHex )
             self.choice_state_dict[topicname] = 3
@@ -733,8 +776,18 @@ class MyMQTTClass(mqtt.Client):
                 unpadded_message = padder.update(decrypted_data2) + padder.finalize()
                 #print("Message after decryption with choice token: ", unpadded_message, " from ", topic_name_str)
 
+                if msg.retain == 0:
+                    retainFlag = False
+                else: 
+                    retainFlag = True
+
+                message_hash_str = str(msg.qos) + str(retainFlag) + str(msg.mid)
+                message_bytes_hash = message_encrypted_with_ct + force_bytes(message_hash_str)
+                print("message_hash_str ", message_hash_str)
+                print("message_bytes_hash ", message_bytes_hash)
+
                 h = hmac.HMAC(self.session_key, hashes.SHA256())
-                h.update(message_encrypted_with_ct)
+                h.update(message_bytes_hash)
                 signature = h.finalize()
                 #print("Received MAC of payload: ", mac_of_payload)
                 #print("Calculated MAC of payload: ", signature )
