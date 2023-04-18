@@ -18,7 +18,7 @@ def subscribe(client: mqtt_client):
     def on_message(client, userdata, msg):
         print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
 
-    client.subscribe("python/mqtt")
+    client.subscribe("#")
     client.on_message = on_message
 
 def run():

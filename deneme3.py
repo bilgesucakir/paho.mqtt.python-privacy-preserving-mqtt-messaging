@@ -17,7 +17,7 @@ def on_publish(client, obj, mid):
  
 Connected = False 
 broker_address = "127.0.0.1"
-client = mqtt.Client(client_id="Client-publisher-new-5",  clean_session=True)
+client = mqtt.Client(client_id="1234569",  clean_session=True)
 client.on_connect = on_connect
 client.on_publish = on_publish
 
@@ -36,9 +36,9 @@ client.loop_start()
 while Connected != True:    
     time.sleep(0.1)
 if Connected == True:
-    client.publish("python/mqtt", "off")
+    client.publish("randomTopicFirstTime", "deneme")
 
-time.sleep(3) #will disconnect in 3 seconds
+time.sleep(5) #will disconnect in 3 seconds
 
 client.disconnect()
 client.loop_stop()

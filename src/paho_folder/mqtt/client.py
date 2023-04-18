@@ -2660,7 +2660,7 @@ class Client(object):
             return MQTT_ERR_SUCCESS
 
     @staticmethod
-    def _filter_wildcard_len_check(sub):
+    def _filter_wildcard_len_check(sub): #############################WILDCARD CHECK
         if (len(sub) == 0 or len(sub) > 65535
             or any(b'+' in p or b'#' in p for p in sub.split(b'/') if len(p) > 1)
                 or b'#/' in sub):
