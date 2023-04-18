@@ -42,6 +42,24 @@ class MyWindowMqtt:
         self.btn21 = tk.Button(base, text='Subscribe',width=10, command = self.client_run2,state=DISABLED)
         self.btn21.place(x=160,y=70)
 
+        self.labl_22 = tk.Label(base, text="Subscribed Topics:",width=20,font=("bold", 10))
+        #self.labl_32.place(x=0,y=160)
+        self.labl_22.place(x=0,y=120)
+
+
+        
+
+        self.dummy_list = []
+        self.list_items = tk.Variable(value=self.dummy_list)
+        self.listbox = tk.Listbox(
+            master=base,
+            height=10,
+            listvariable=self.list_items
+        )
+        self.listbox.place(x=10, y=140)
+
+        self.btn211 = tk.Button(base, text='Unsubscribe',width=10, command = self.client_run4, state=DISABLED)
+        self.btn211.place(x=160, y=140)
 
         self.labl_31 = tk.Label(base, text="Publish Topic:",width=20,font=("bold", 10))
         #self.labl_31.place(x=0,y=120)
@@ -52,10 +70,10 @@ class MyWindowMqtt:
 
         self.labl_32 = tk.Label(base, text="Publish Msg:",width=20,font=("bold", 10))
         #self.labl_32.place(x=0,y=160)
-        self.labl_32.place(x=260,y=100)
+        self.labl_32.place(x=260,y=120)
         self.entry_32 = tk.Text(base, width=30, height=10,state=DISABLED)
         #self.entry_32.place(x=10,y=180)
-        self.entry_32.place(x=270,y=120)
+        self.entry_32.place(x=270,y=140)
         self.btn31= tk.Button(base, text='Publish',width=10, command = self.client_run3,state=DISABLED)
         #self.btn31.place(x=160,y=130)
         self.btn31.place(x=420,y=70)
@@ -73,6 +91,8 @@ class MyWindowMqtt:
         self.btn31['state'] = NORMAL
         self.entry_31['state'] = NORMAL
         self.entry_32['state'] = NORMAL
+
+        self.btn211['state'] = NORMAL
         
     def  client_run2(self):
         topicname1= self.entry_21.get()
@@ -82,6 +102,10 @@ class MyWindowMqtt:
 
         rc = asyncio.run(self.mqttc.run2(self.client,list_topicname))
         print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
+
+        for bool_item in self.mqttc.subscribe_success:
+            self.listbox.insert("end", bool_item)
+
         
 
     def  client_run3(self):
@@ -93,6 +117,17 @@ class MyWindowMqtt:
         print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
         
         #logger.log(lvl, self.message.get())
+
+
+    def client_run4(self):
+        #get cursor selection
+        selection = "dummyForNow"
+        #implement unsubscribe here
+
+        print("will unsubscribe from", selection)
+        print("not implemented yet")
+
+        #call rc asyncio.run(self.mqttc.functionnametounsubscribe(params))
 
 
 class xApp:

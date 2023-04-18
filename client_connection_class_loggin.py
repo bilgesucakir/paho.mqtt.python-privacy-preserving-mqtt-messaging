@@ -75,6 +75,9 @@ class MyMQTTClass(mqtt.Client):
         #fix for now, will be checkec later
 
 
+        self.subscribe_success:list = [] #list of true and falses
+
+
     def cert_read_fnc(self):
         cert_dir = "."
         CERT_FILE = "./cert_create/key.pem"
@@ -480,6 +483,8 @@ class MyMQTTClass(mqtt.Client):
                 #print("Received signVerifyFailed, wont get choicetoken. Following should be empty:", self.choiceTokenDictionary[topicName_str])
                 logger.log(logging.INFO, "Received signVerifyFailed, wont get choicetoken. Following should be empty:" + self.choiceTokenDictionary[topicName_str])
 
+                
+
             else:
                 #print("choiceToken: ", choiceToken)
                 #print("Topic name:", topicName, " and its choiceToken: ", choiceToken.hex())
@@ -700,6 +705,9 @@ class MyMQTTClass(mqtt.Client):
             self.choice_state_dict[topicname] = 3
 
 
+            self.subscribe_success.append(topicname)
+
+
         return client
 
 
@@ -801,12 +809,18 @@ class MyMQTTClass(mqtt.Client):
                     logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
                     #print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
 
+
+                    
                 else:
                     #print("The content of the payload is changed, Mac of the payload is not correct")
                     logger.log(logging.INFO, "The content of the payload is changed, Mac of the payload is not correct")
+
+
             else:
                 #print("The content of the topic name is changed. Mac of the topic name is correct")
                 logger.log(logging.INFO, "The content of the topic name is changed. Mac of the topic name is correct")
+
+
 
 
         client.on_message = on_message
@@ -1148,6 +1162,9 @@ class MyMQTTClass(mqtt.Client):
         #client.loop_stop()
 
     async def run2(self,client,topicname_list):
+
+        self.subscribe_success = [] #initialize list in each subscribe request as 0
+
 
         print("Topic names received from the gui:", topicname_list)
         #logger.log(logging.INFO, "Topic names received from the gui:"+ topicname_list)
