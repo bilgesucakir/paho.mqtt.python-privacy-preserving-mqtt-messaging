@@ -19,7 +19,7 @@ from django.utils.encoding import force_bytes, force_str
 import secrets
 import asyncio
 from src.paho_folder.mqtt.client import Client
-from gui4 import MyWindow
+from gui_client import MyWindow
 
 
 logging.basicConfig(level=logging.DEBUG)
