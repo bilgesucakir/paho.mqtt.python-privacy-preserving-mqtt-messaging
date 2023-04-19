@@ -1223,6 +1223,24 @@ class MyMQTTClass(mqtt.Client):
         #client.loop_stop()
 
 
+    async def run4(self, client, selected_topics_list):
+
+        strconcat = ""
+        for elem in selected_topics_list:
+            strconcat += elem + ", "
+
+        strconcat = strconcat[0:len(strconcat)-2]
+
+        #unsubscribe from each topic
+        logger.log(logging.INFO,"Topic names to unsubscribe received from the gui:"+ strconcat)
+
+
+
+        
+
+
+
+
 #mqttc.loop_stop()
 
 def deneme():
