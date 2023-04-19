@@ -542,6 +542,10 @@ class Client(object):
         self._client_mode = MQTT_CLIENT
         self._session = None
 
+        #bilgesu modification
+        self.received_badmac_unsub = False
+
+        #bilgesu modification end
 
         self._dontreconnect = False
 
@@ -3592,7 +3596,11 @@ class Client(object):
                     if not self.suppress_exceptions:
                         raise
 
+
+
         return MQTT_ERR_SUCCESS
+
+        
 
     def _do_on_disconnect(self, rc, properties=None):
         with self._callback_mutex:

@@ -133,10 +133,15 @@ class MyWindowMqtt:
         selected_topics = self.selected_items()
         #implement unsubscribe here
 
-        print("will unsubscribe from", selected_topics)
-        print("not implemented yet")
+        print("Will unsubscribe from", selected_topics)
 
         rc = asyncio.run(self.mqttc.run4(self.client, selected_topics))
+
+        if self.mqttc.unsub_success:
+            for elem in selected_topics:
+                idx = self.listbox.get(0, tk.END).index(elem)
+                self.listbox.delete(idx)
+
         print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
 
 
