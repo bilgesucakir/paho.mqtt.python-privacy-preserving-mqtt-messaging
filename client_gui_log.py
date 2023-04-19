@@ -35,48 +35,57 @@ class MyWindowMqtt:
         self.btn12.place(x=110,y=10)
 
 
-        self.labl_21 = tk.Label(base, text="Subscribe Topic:",width=20,font=("bold", 10))
-        self.labl_21.place(x=0,y=60)
+        self.labl_21 = tk.Label(base, text="Subscribe to a Topic:",width=20,font=("bold", 10))
+        self.labl_21.place(x=-10,y=60)
         self.entry_21 = tk.Entry(base,state=DISABLED)
         self.entry_21.place(x=10,y=80)
         self.btn21 = tk.Button(base, text='Subscribe',width=10, command = self.client_run2,state=DISABLED)
-        self.btn21.place(x=160,y=70)
+        self.btn21.place(x=160,y=75)
 
         self.labl_22 = tk.Label(base, text="Subscribed Topics:",width=20,font=("bold", 10))
         #self.labl_32.place(x=0,y=160)
-        self.labl_22.place(x=0,y=120)
+        self.labl_22.place(x=-15,y=120)
 
-
-        
+        #bilgesu modification
+        self.frame = tk.Frame(base)
+        self.frame.place(x=10, y=140)
 
         self.dummy_list = []
         self.list_items = tk.Variable(value=self.dummy_list)
         self.listbox = tk.Listbox(
-            master=base,
+            master=self.frame,
             height=10,
-            listvariable=self.list_items
+            listvariable=self.list_items,
+            selectmode=tk.MULTIPLE
         )
-        self.listbox.place(x=10, y=140)
+        self.listbox.pack(side=tk.LEFT, fill=tk.BOTH)
+
+        self.scrollbar = tk.Scrollbar(self.frame)
+        self.scrollbar.pack(side = tk.LEFT, fill = tk.BOTH)
+
+        self.listbox.config(yscrollcommand = self.scrollbar.set)
+        self.scrollbar.config(command = self.listbox.yview)
+        #bilgesu modification
 
         self.btn211 = tk.Button(base, text='Unsubscribe',width=10, command = self.client_run4, state=DISABLED)
         self.btn211.place(x=160, y=140)
 
-        self.labl_31 = tk.Label(base, text="Publish Topic:",width=20,font=("bold", 10))
+        self.labl_31 = tk.Label(base, text="Publish to a Topic:",width=20,font=("bold", 10)) 
         #self.labl_31.place(x=0,y=120)
-        self.labl_31.place(x=260,y=60)
+        self.labl_31.place(x=250,y=60)
         self.entry_31 = tk.Entry(base,state=DISABLED)
         #self.entry_31.place(x=10,y=140)
         self.entry_31.place(x=280,y=80)
 
         self.labl_32 = tk.Label(base, text="Publish Msg:",width=20,font=("bold", 10))
         #self.labl_32.place(x=0,y=160)
-        self.labl_32.place(x=260,y=120)
-        self.entry_32 = tk.Text(base, width=30, height=10,state=DISABLED)
+        self.labl_32.place(x=235,y=120)
+        self.entry_32 = tk.Text(base, width=28, height=10,state=DISABLED)
         #self.entry_32.place(x=10,y=180)
-        self.entry_32.place(x=270,y=140)
+        self.entry_32.place(x=280,y=140)
         self.btn31= tk.Button(base, text='Publish',width=10, command = self.client_run3,state=DISABLED)
         #self.btn31.place(x=160,y=130)
-        self.btn31.place(x=420,y=70)
+        self.btn31.place(x=428,y=75)
 
 
     def client_run1(self):
@@ -121,13 +130,25 @@ class MyWindowMqtt:
 
     def client_run4(self):
         #get cursor selection
-        selection = "dummyForNow"
+        selected_topics = self.selected_items()
         #implement unsubscribe here
 
-        print("will unsubscribe from", selection)
+        print("will unsubscribe from", selected_topics)
         print("not implemented yet")
 
-        #call rc asyncio.run(self.mqttc.functionnametounsubscribe(params))
+        rc = asyncio.run(self.mqttc.run4(self.client, selected_topics))
+        print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
+
+
+
+    def selected_items(self) -> list:
+
+        return_list = []
+
+        for index in self.listbox.curselection():
+            return_list.append(str(self.listbox.get(index)))
+
+        return return_list
 
 
 class xApp:
@@ -139,14 +160,14 @@ class xApp:
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
         root.title("MQTT CLIENT")
-        root.geometry('1600x700')
+        root.geometry('1265x680')
 
         # Create the panes and frames
         horizontal_pane = ttk.PanedWindow(self.root,orient=HORIZONTAL)
         horizontal_pane.grid(row=0, column=0, sticky="nsew")
-        vertical_pane1 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=600,width=550)
+        vertical_pane1 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=550)
         horizontal_pane.add(vertical_pane1)
-        vertical_pane2 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=600,width=200)
+        vertical_pane2 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=200)
         horizontal_pane.add(vertical_pane2)
 
         form_frame = ttk.Labelframe(vertical_pane1, text="xxxxclient",height=300,width=550)
@@ -155,8 +176,8 @@ class xApp:
         #third_frame = ttk.Labelframe(vertical_pane1, text="Third Frame",height=200,width=500)
         #vertical_pane1.add(third_frame, weight=2)
 
-        console_frame = ttk.Labelframe(vertical_pane2 , text="Console",height=600,width=200)
-        vertical_pane2 .add(console_frame, weight=1)
+        console_frame = ttk.Labelframe(vertical_pane2 , text="Console",height=600,width=200, padding=(5,0,0,0))
+        vertical_pane2.add(console_frame, weight=1)
 
 
         # Initialize all frames

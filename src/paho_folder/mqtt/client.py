@@ -1560,7 +1560,7 @@ class Client(object):
         Raises a ValueError if topic is None or has zero string length, or is
         not a string or list.
         """
-        topic_list = None
+        topic_list = None  #elems should be encrypted || append mac with topic and qos, then call _send_unsubscribe with teh list as elems as described
         if topic is None:
             raise ValueError('Invalid topic.')
         if isinstance(topic, basestring):
