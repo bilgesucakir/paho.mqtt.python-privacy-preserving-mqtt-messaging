@@ -31,8 +31,8 @@ class MyWindowMqtt:
 
         self.btn11 = tk.Button(base, text="Connect",width=10, command = self.client_run1,state=NORMAL)
         self.btn11.place(x=10,y=10)
-        self.btn12 = tk.Button(base, text="Disconnect",width=10,state=DISABLED)
-        self.btn12.place(x=110,y=10)
+        #self.btn12 = tk.Button(base, text="Disconnect",width=10,state=DISABLED)
+        #self.btn12.place(x=110,y=10)
 
 
         self.labl_21 = tk.Label(base, text="Subscribe to a Topic:",width=20,font=("bold", 10))
@@ -137,12 +137,19 @@ class MyWindowMqtt:
 
         rc = asyncio.run(self.mqttc.run4(self.client, selected_topics))
 
+        
+
+
         if self.mqttc.unsub_success:
             for elem in selected_topics:
                 idx = self.listbox.get(0, tk.END).index(elem)
                 self.listbox.delete(idx)
 
+                #logger.log(logging.INFO, "Successfully unsubscribe from topic: "+ str(elem)) #while loop needed to display this at the very end of client_run4
+
+
         print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
+
 
 
 
