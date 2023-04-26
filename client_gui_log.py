@@ -31,8 +31,8 @@ class MyWindowMqtt:
 
         self.btn11 = tk.Button(base, text="Connect",width=10, command = self.client_run1,state=NORMAL)
         self.btn11.place(x=10,y=10)
-        #self.btn12 = tk.Button(base, text="Disconnect",width=10,state=DISABLED)
-        #self.btn12.place(x=110,y=10)
+        self.btn12 = tk.Button(base, text="Disconnect",width=10,state=DISABLED, command=self.client_run5)
+        self.btn12.place(x=110,y=10)
 
 
         self.labl_21 = tk.Label(base, text="Subscribe to a Topic:",width=20,font=("bold", 10))
@@ -102,6 +102,8 @@ class MyWindowMqtt:
         self.entry_32['state'] = NORMAL
 
         self.btn211['state'] = NORMAL
+
+        self.btn12['state'] = NORMAL
         
     def  client_run2(self):
         topicname1= self.entry_21.get()
@@ -149,6 +151,28 @@ class MyWindowMqtt:
 
 
         print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
+
+
+    def client_run5(self): #disconnect
+
+        self.btn11['state'] = NORMAL
+
+        self.btn21['state'] = DISABLED
+        self.entry_21['state'] = DISABLED
+
+        self.btn31['state'] = DISABLED
+        self.entry_31['state'] = DISABLED
+        self.entry_32['state'] = DISABLED
+
+        self.btn211['state'] = DISABLED
+
+        self.btn12['state'] = DISABLED
+
+        #client_object = self.client()
+        '''myMqttc1 = MyMQTTClass()
+        self.mqttc = myMqttc1
+        self.client = None'''
+        #client_object.disconnect()
 
 
 
