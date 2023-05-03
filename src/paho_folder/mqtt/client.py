@@ -3399,13 +3399,14 @@ class Client(object):
                 if sys.version_info[0] < 3:
                     c = ord(c)
                 reasoncodes.append(ReasonCodes(SUBACK >> 4, identifier=c))
+            
 
+        else:
+            pack_format = "!" + "B" * len(packet)
+            granted_qos = struct.unpack(pack_format, packet)    
             
             
-            
-            self._logger(MQTT_LOG_DEBUG, "#################mac part: %s", mac)
-            self._logger(MQTT_LOG_INFO, "#######################3mac part: %s", mac)
-          
+           
             
 
 
