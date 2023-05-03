@@ -187,12 +187,6 @@ MQTT_CLEAN_START_FIRST_ONLY = 3
 
 sockpair_data = b"0"
 
-from client_logging import *
-#bilgesu:modification
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger("client_logging")
-#bilgesu:modification
-
 
 class WebsocketConnectionError(ValueError):
     pass
