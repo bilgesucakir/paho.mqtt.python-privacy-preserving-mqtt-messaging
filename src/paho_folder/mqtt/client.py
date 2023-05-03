@@ -185,6 +185,12 @@ MQTT_CLEAN_START_FIRST_ONLY = 3
 
 sockpair_data = b"0"
 
+from client_logging import *
+#bilgesu:modification
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("client_logging")
+#bilgesu:modification
+
 
 class WebsocketConnectionError(ValueError):
     pass
@@ -2799,7 +2805,7 @@ class Client(object):
         self._easy_log(MQTT_LOG_DEBUG, "Sending PUBREL (Mid: %d)", mid)
         return self._send_command_with_mid(PUBREL | 2, mid, False)
 
-    def _send_command_with_mid(self, command, mid, dup):
+    def _send_command_with_mid(self, command, mid, dup): 
         # For PUBACK, PUBCOMP, PUBREC, and PUBREL
         if dup:
             command |= 0x8
@@ -3368,7 +3374,7 @@ class Client(object):
 
         return MQTT_ERR_SUCCESS
 
-    def _handle_suback(self):
+    def _handle_suback(self):  #bunun update edilmesi gerekebilir encapsulated subackler için!!!!!!!!!!
         self._easy_log(MQTT_LOG_DEBUG, "Received SUBACK")
         pack_format = "!H" + str(len(self._in_packet['packet']) - 2) + 's'
         (mid, packet) = struct.unpack(pack_format, self._in_packet['packet'])
@@ -3377,10 +3383,23 @@ class Client(object):
             properties = Properties(SUBACK >> 4)
             props, props_len = properties.unpack(packet)
             reasoncodes = []
-            for c in packet[props_len:]:
+
+            #bilgesu:modification
+            packet_len = len(packet)
+
+            mac_start_index = packet.index(b"::::")
+
+            for c in packet[props_len:mac_start_index]:#bilgesu:modification
                 if sys.version_info[0] < 3:
                     c = ord(c)
                 reasoncodes.append(ReasonCodes(SUBACK >> 4, identifier=c))
+
+            #bilgesu:modification
+            mac = packet[mac_start_index + 4:]
+            
+            self._logger(MQTT_LOG_DEBUG, "#################mac part: %s", mac)
+            self._logger(MQTT_LOG_INFO, "#######################3mac part: %s", mac)
+
         else:
             pack_format = "!" + "B" * len(packet)
             granted_qos = struct.unpack(pack_format, packet)
@@ -3644,7 +3663,7 @@ class Client(object):
                     return rc
         return MQTT_ERR_SUCCESS
 
-    def _handle_pubackcomp(self, cmd):
+    def _handle_pubackcomp(self, cmd): #pubcomp için gerek yok ama puback için updatelenmesi gerekebilir, önce ilk bite bakacak 0 mı 1 mi mac var yok sonrasında maci ayrıca bir parametre olarak tutması ve kontrol etmsi gerekebilir bu noktada
         if self._protocol == MQTTv5:
             if self._in_packet['remaining_length'] < 2:
                 return MQTT_ERR_PROTOCOL
