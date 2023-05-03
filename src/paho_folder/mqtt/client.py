@@ -320,6 +320,7 @@ class MQTTMessageInfo(object):
         self._condition = threading.Condition()
         self.rc = 0
         self._iterpos = 0
+     
 
     def __str__(self):
         return str((self.rc, self.mid))
@@ -410,7 +411,7 @@ class MQTTMessage(object): #members can be added if necessary here
     properties: Properties class. In MQTT v5.0, the properties associated with the message.
     """
 
-    __slots__ = 'timestamp', 'state', 'dup', 'mid', '_topic', 'payload', 'qos', 'retain', 'info', 'properties'
+    __slots__ = 'timestamp', 'state', 'dup', 'mid', '_topic', 'payload', 'qos', 'retain', 'info', 'properties', 'mac'
 
     def __init__(self, mid=0, topic=b""):
         self.timestamp = 0
@@ -422,6 +423,7 @@ class MQTTMessage(object): #members can be added if necessary here
         self.qos = 0
         self.retain = False
         self.info = MQTTMessageInfo(mid)
+        self.mac = ""
 
     def __eq__(self, other):
         """Override the default Equals behavior"""
@@ -549,6 +551,7 @@ class Client(object):
         self._connect_timeout = 5.0
         self._client_mode = MQTT_CLIENT
         self._session = None
+        self.mac = None
 
         #bilgesu modification
         self.received_badmac_unsub = False
@@ -2672,6 +2675,12 @@ class Client(object):
             if self._last_mid == 65536:
                 self._last_mid = 1
             return self._last_mid
+        
+    def get_mac (self):
+            if (self.mac == None):
+                return 1
+            else:
+                return self.mac
 
     @staticmethod
     def _topic_wildcard_len_check(topic):
@@ -3380,31 +3389,30 @@ class Client(object):
         self._easy_log(MQTT_LOG_DEBUG, "Received SUBACK")
         pack_format = "!H" + str(len(self._in_packet['packet']) - 2) + 's'
         (mid, packet) = struct.unpack(pack_format, self._in_packet['packet'])
-
+        self.mac = self._in_packet['packet']
         if self._protocol == MQTTv5:
             properties = Properties(SUBACK >> 4)
             props, props_len = properties.unpack(packet)
             reasoncodes = []
 
-            for c in packet[props_len:]:#bilgesu:modification
+            #bilgesu:modification
+            packet_len = len(packet)
+
+            #mac_start_index = packet.index(b"::::")
+            
+
+            for c in packet[props_len]:#bilgesu:modification
                 if sys.version_info[0] < 3:
                     c = ord(c)
                 reasoncodes.append(ReasonCodes(SUBACK >> 4, identifier=c))
 
-        else:
-            pack_format = "!" + "B" * len(packet)
-            granted_qos = struct.unpack(pack_format, packet)
-
-
-            #bilgesu:modification
-            mac_start_index = packet.index(b"::::")
-
-                        #bilgesu:modification
-            mac = packet[mac_start_index + 4:]
             
-            str_mac = force_str(mac)
-
-            print("str_mac: ", str_mac)
+            
+            
+            self._logger(MQTT_LOG_DEBUG, "#################mac part: %s", mac)
+            self._logger(MQTT_LOG_INFO, "#######################3mac part: %s", mac)
+          
+            
 
 
         with self._callback_mutex:
