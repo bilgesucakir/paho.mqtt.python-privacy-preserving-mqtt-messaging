@@ -1104,14 +1104,16 @@ class MyMQTTClass(mqtt.Client):
 
         return client
 
-    async def receive_message_after_unsub(self):
+    async def receive_message_after_unsub(self, client):
+
+        
         def on_unsubscribe(self, obj, mid):
 
+            mac_received = self.get_packet_bytes()
             logger.log(logging.INFO, "Unsuback was received, messageID =" + str(mid))
+            logger.log(logging.INFO, "Bytes =" + str(mac_received))
 
         self.on_unsubscribe = on_unsubscribe
-
-
 
 
 
@@ -1340,7 +1342,8 @@ class MyMQTTClass(mqtt.Client):
             self.subscribe4(client, bool_false, bool_true)
 
         if self.disconnect_flag == False:
-            await self.receive_message_after_unsub()
+            await self.receive_message_after_unsub(client)
+
 
         if self.received_badmac_unsub == False:
             self.unsub_success = True

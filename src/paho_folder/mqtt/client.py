@@ -405,7 +405,7 @@ class MQTTMessage(object): #members can be added if necessary here
     properties: Properties class. In MQTT v5.0, the properties associated with the message.
     """
 
-    __slots__ = 'timestamp', 'state', 'dup', 'mid', '_topic', 'payload', 'qos', 'retain', 'info', 'properties', 'mac'
+    __slots__ = 'timestamp', 'state', 'dup', 'mid', '_topic', 'payload', 'qos', 'retain', 'info', 'properties', 'mac', 'packet_bytes'
 
     def __init__(self, mid=0, topic=b""):
         self.timestamp = 0
@@ -418,6 +418,7 @@ class MQTTMessage(object): #members can be added if necessary here
         self.retain = False
         self.info = MQTTMessageInfo(mid)
         self.mac = ""
+        self.packet_bytes = ""
 
     def __eq__(self, other):
         """Override the default Equals behavior"""
@@ -546,6 +547,7 @@ class Client(object):
         self._client_mode = MQTT_CLIENT
         self._session = None
         self.mac = None
+        self.packet_bytes = None
 
         #bilgesu modification
         self.received_badmac_unsub = False
@@ -2675,6 +2677,12 @@ class Client(object):
                 return 1
             else:
                 return self.mac
+            
+    def get_packet_bytes(self):
+        if (self.packet_bytes == None):
+                return 1
+        else:
+            return self.packet_bytes
 
     @staticmethod
     def _topic_wildcard_len_check(topic):
@@ -3587,8 +3595,11 @@ class Client(object):
         if self._protocol == MQTTv5:
             if self._in_packet['remaining_length'] < 4:
                 return MQTT_ERR_PROTOCOL
-        elif self._in_packet['remaining_length'] != 2:
-            return MQTT_ERR_PROTOCOL
+        '''if self.authenticated == False:
+            if self._in_packet['remaining_length'] != 2:
+                return MQTT_ERR_PROTOCOL'''
+        
+        self.packet_bytes = self._in_packet['packet']
 
         mid, = struct.unpack("!H", self._in_packet['packet'][:2])
         if self._protocol == MQTTv5:

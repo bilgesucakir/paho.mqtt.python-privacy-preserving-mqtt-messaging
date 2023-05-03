@@ -164,6 +164,15 @@ class MyMQTTClass(mqtt.Client):
         logger.log(logging.ERROR, "mac " + str(mac))
 
 
+    def on_unsubscribe(self, obj, mid):
+
+        packet_bytes = self.get_packet_bytes()
+
+        logger.log(logging.INFO, "Unsuback was received, message Id: " + str(mid))
+
+        logger.log(logging.ERROR, "mac " + str(packet_bytes))
+
+
     def on_log(self, mqttc, obj, level, string):
         #print("--------on_log()----"+ string)
         msg1 = "failed to receive on socket"
@@ -728,11 +737,16 @@ class MyMQTTClass(mqtt.Client):
         return client
 
 
+    async def receive_message_after_unsub(self, client:Client):
+        logger.log(logging.INFO, "In receive messag after unsub.")
 
+        def on_unsubscribe(self, obj, mid):
 
+            packet_bytes = client.get_packet_bytes()
+            logger.log(logging.INFO, "Unsuback was received, message Id: " + str(mid))
+            logger.log(logging.ERROR, "mac " + str(packet_bytes))
 
-
-
+        self.on_unsubscribe = on_unsubscribe
 
 
     def subscribe4(self, client: mqtt, is_after_publish:bool, is_unsub:bool):
@@ -1142,17 +1156,6 @@ class MyMQTTClass(mqtt.Client):
 
         return client
 
-    async def receive_message_after_unsub(self):
-        def on_unsubscribe(self, obj, mid):
-
-            logger.log(logging.INFO, "Unsuback was received, messageID =" + str(mid))
-
-        self.on_unsubscribe = on_unsubscribe
-
-
-
-
-
     async def encrypt_mac_topic_names(self, list_topics):
 
         return_list = []
@@ -1407,7 +1410,10 @@ class MyMQTTClass(mqtt.Client):
             self.subscribe4(client, bool_false, bool_true)
 
         if self.disconnect_flag == False:
-            await self.receive_message_after_unsub()
+
+            await self.receive_message_after_unsub(client)
+            logger.log(logging.INFO, "Here")
+       
 
         if self.received_badmac_unsub == False:
             self.unsub_success = True
