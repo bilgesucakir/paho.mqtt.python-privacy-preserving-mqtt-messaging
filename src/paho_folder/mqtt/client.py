@@ -185,6 +185,12 @@ MQTT_CLEAN_START_FIRST_ONLY = 3
 
 sockpair_data = b"0"
 
+from client_logging import *
+#bilgesu:modification
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("client_logging")
+#bilgesu:modification
+
 
 class WebsocketConnectionError(ValueError):
     pass
@@ -3377,10 +3383,23 @@ class Client(object):
             properties = Properties(SUBACK >> 4)
             props, props_len = properties.unpack(packet)
             reasoncodes = []
-            for c in packet[props_len:]:
+
+            #bilgesu:modification
+            packet_len = len(packet)
+
+            mac_start_index = packet.index(b"::::")
+
+            for c in packet[props_len:mac_start_index]:#bilgesu:modification
                 if sys.version_info[0] < 3:
                     c = ord(c)
                 reasoncodes.append(ReasonCodes(SUBACK >> 4, identifier=c))
+
+            #bilgesu:modification
+            mac = packet[mac_start_index + 4:]
+            
+            self._logger(MQTT_LOG_DEBUG, "#################mac part: %s", mac)
+            self._logger(MQTT_LOG_INFO, "#######################3mac part: %s", mac)
+
         else:
             pack_format = "!" + "B" * len(packet)
             granted_qos = struct.unpack(pack_format, packet)
