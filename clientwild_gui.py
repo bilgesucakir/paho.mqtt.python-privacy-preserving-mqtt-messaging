@@ -103,6 +103,17 @@ class MyWindowMqtt:
 
         self.btn211['state'] = NORMAL
 
+
+
+    def appendToList(self, mqttc:MyMQTTClass) -> bool:
+        for item in mqttc.subscribe_success:
+            time.sleep(0.2)
+            self.listbox.insert("end", item)
+
+        
+
+        return True
+
     def  client_run2(self):
 
 
@@ -130,8 +141,11 @@ class MyWindowMqtt:
 
         rc = asyncio.run(self.mqttc.run2(self.client,list_topicname2))
         print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
-        for item in self.mqttc.subscribe_success:
-                self.listbox.insert("end", item)
+
+
+        bool_dummy = self.appendToList(self.mqttc)
+        print("DUMMY:", bool_dummy)
+        
 
 
 

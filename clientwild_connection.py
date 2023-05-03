@@ -173,7 +173,7 @@ class MyMQTTClass(mqtt.Client):
 
     def on_connect_fail(self, mqttc):
         #print("Connection failed")
-        client.suppress_exceptions = True
+        self.suppress_exceptions = True
         logger.log(logging.ERROR, "Connection failed")
 
     def on_connect(self, mqttc, obj, flags, rc):

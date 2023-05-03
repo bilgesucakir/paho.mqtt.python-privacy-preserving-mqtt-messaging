@@ -1269,7 +1269,7 @@ class MyMQTTClass(mqtt.Client):
             stop = False
             while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
                     stop = True
-                    logger.log(logging.INFO, "Bad MAC message received.")
+                    #logger.log(logging.INFO, "Bad MAC message received.")
                     time.sleep(0.1)
             if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
                 self.subscribe_real_topics(client, topicname1)

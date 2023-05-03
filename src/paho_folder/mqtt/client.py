@@ -32,6 +32,8 @@ from src.paho_folder.mqtt.subscribeoptions import SubscribeOptions
 #bilgesu: session import
 from .connectionsession import ConnectionSession
 
+from django.utils.encoding import force_bytes, force_str
+
 """
 This is an MQTT client module. MQTT is a lightweight pub/sub messaging
 protocol that is easy to implement and suitable for low powered devices.
@@ -3384,25 +3386,26 @@ class Client(object):
             props, props_len = properties.unpack(packet)
             reasoncodes = []
 
-            #bilgesu:modification
-            packet_len = len(packet)
-
-            mac_start_index = packet.index(b"::::")
-
-            for c in packet[props_len:mac_start_index]:#bilgesu:modification
+            for c in packet[props_len:]:#bilgesu:modification
                 if sys.version_info[0] < 3:
                     c = ord(c)
                 reasoncodes.append(ReasonCodes(SUBACK >> 4, identifier=c))
 
-            #bilgesu:modification
-            mac = packet[mac_start_index + 4:]
-            
-            self._logger(MQTT_LOG_DEBUG, "#################mac part: %s", mac)
-            self._logger(MQTT_LOG_INFO, "#######################3mac part: %s", mac)
-
         else:
             pack_format = "!" + "B" * len(packet)
             granted_qos = struct.unpack(pack_format, packet)
+
+
+            #bilgesu:modification
+            mac_start_index = packet.index(b"::::")
+
+                        #bilgesu:modification
+            mac = packet[mac_start_index + 4:]
+            
+            str_mac = force_str(mac)
+
+            print("str_mac: ", str_mac)
+
 
         with self._callback_mutex:
             on_subscribe = self.on_subscribe
