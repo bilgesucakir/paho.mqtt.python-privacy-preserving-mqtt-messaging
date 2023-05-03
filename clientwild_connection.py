@@ -160,6 +160,8 @@ class MyMQTTClass(mqtt.Client):
         #print("Subscribed, message id: "+str(mid)+ ", QOS: "+str(granted_qos))
         #print("Suback received, message id: "+str(mid))
         logger.log(logging.INFO, "Suback received, message id: "+ str(mid))
+        mac = self.get_mac()
+        logger.log(logging.ERROR, "mac " + str(mac))
 
 
     def on_log(self, mqttc, obj, level, string):
@@ -1286,6 +1288,7 @@ class MyMQTTClass(mqtt.Client):
             return client
 
         self.subscribe_success = [] #initialize list in each subscribe request as 0
+       
 
 
         print("Topic names received from the gui:", topicname_list)
