@@ -107,7 +107,6 @@ class MyWindowMqtt:
 
     def appendToList(self, mqttc:MyMQTTClass) -> bool:
         for item in mqttc.subscribe_success:
-            time.sleep(0.2)
             self.listbox.insert("end", item)
 
         

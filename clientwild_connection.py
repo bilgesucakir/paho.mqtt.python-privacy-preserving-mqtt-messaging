@@ -1235,7 +1235,7 @@ class MyMQTTClass(mqtt.Client):
         client.on_message = on_message
 
         if (self.key_establishment_state == 2):
-            client.subscribe(id_client, 2)
+            client.subscribe(id_client, 1)
             #print("----Client subscribed to its client id (step 3 of the DH Key Exchange)----")
             logger.log(logging.INFO, "----Client subscribed to its client id (step 3 of the DH Key Exchange)----")
             self.key_establishment_state = 3
