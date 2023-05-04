@@ -183,6 +183,17 @@ class MyMQTTClass(mqtt.Client):
         logger.log(logging.INFO, "Unsuback was received, message Id: " + str(mid))
 
         logger.log(logging.ERROR, "mac " + str(packet_bytes))
+        index1 = packet_bytes.index(b'::::')
+        mac_real =  packet_bytes[index1+4:]
+        logger.log(logging.ERROR, "mac " + str(mac_real))
+        byte_packet_id = force_bytes(str(mid), 'utf-8')
+        message = byte_packet_id 
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(message)
+        signature = h.finalize()
+        logger.log(logging.ERROR, "mac " + str(signature))
+        if (mac_real == signature):
+            logger.log(logging.ERROR, "same " )
 
 
     def on_log(self, mqttc, obj, level, string):
@@ -776,6 +787,18 @@ class MyMQTTClass(mqtt.Client):
             packet_bytes = client.get_packet_bytes()
             logger.log(logging.INFO, "Unsuback was received, message Id: " + str(mid))
             logger.log(logging.ERROR, "mac " + str(packet_bytes))
+            index1 = packet_bytes.index(b'::::')
+            mac_real =  packet_bytes[index1+4:]
+            logger.log(logging.ERROR, "mac " + str(mac_real))
+            byte_packet_id = force_bytes(str(mid), 'utf-8')
+            message = byte_packet_id 
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(message)
+            signature = h.finalize()
+            logger.log(logging.ERROR, "mac " + str(signature))
+            if (mac_real == signature):
+                logger.log(logging.ERROR, "same " )
+
 
         self.on_unsubscribe = on_unsubscribe
 
