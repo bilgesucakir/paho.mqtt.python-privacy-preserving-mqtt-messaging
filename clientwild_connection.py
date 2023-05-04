@@ -1187,16 +1187,7 @@ class MyMQTTClass(mqtt.Client):
 
 
         return client
-
-    async def receive_message_after_unsub(self):
-        def on_unsubscribe(self, obj, mid):
-
-            logger.log(logging.INFO, "Unsuback was received, messageID =" + str(mid))
-
-
-        self.on_unsubscribe = on_unsubscribe
-
-
+  
 
 
 
