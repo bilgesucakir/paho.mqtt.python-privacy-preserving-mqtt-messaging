@@ -546,6 +546,7 @@ class Client(object):
         self._client_mode = MQTT_CLIENT
         self._session = None
         self.mac = None
+        self.puback = None
 
         #bilgesu modification
         self.received_badmac_unsub = False
@@ -553,6 +554,7 @@ class Client(object):
         #bilgesu modification end
 
         self._dontreconnect = False
+        self._authenticated = False
 
         if protocol == MQTTv5:
             if clean_session is not None:
@@ -649,6 +651,8 @@ class Client(object):
         self._mqttv5_first_connect = True
         self.suppress_exceptions = False # For callbacks
         self._dontreconnect = False
+        
+        
 
 
 
@@ -2675,6 +2679,12 @@ class Client(object):
                 return 1
             else:
                 return self.mac
+            
+    def get_puback (self):
+            if (self.puback == None):
+                return 1
+            else:
+                return self.puback
 
     @staticmethod
     def _topic_wildcard_len_check(topic):
@@ -3143,7 +3153,10 @@ class Client(object):
             return self._handle_pingresp()
         elif cmd == PUBACK:
             #state can be setted here when the class in added in client.py
-            return self._handle_pubackcomp("PUBACK")
+            if self._authenticated == False:
+                return self._handle_pubackcomp("PUBACK")
+            else: 
+                return self._handle_puback()
         elif cmd == PUBCOMP:
             return self._handle_pubackcomp("PUBCOMP")
         elif cmd == PUBLISH:
@@ -3383,7 +3396,7 @@ class Client(object):
         self._easy_log(MQTT_LOG_DEBUG, "Received SUBACK")
         pack_format = "!H" + str(len(self._in_packet['packet']) - 2) + 's'
         (mid, packet) = struct.unpack(pack_format, self._in_packet['packet'])
-        self.mac = self._in_packet['packet']
+        self.mac = packet
         if self._protocol == MQTTv5:
             properties = Properties(SUBACK >> 4)
             props, props_len = properties.unpack(packet)
@@ -3427,6 +3440,23 @@ class Client(object):
                         MQTT_LOG_ERR, 'Caught exception in on_subscribe: %s', err)
                     if not self.suppress_exceptions:
                         raise
+
+        return MQTT_ERR_SUCCESS
+
+
+
+
+    def _handle_puback(self):  
+        piece1 = self._in_packet['packet']
+        self.puback = piece1
+        pack_format = "!H" + str(len(self._in_packet['packet']) - 2) + 's'
+        (mid, packet) = struct.unpack(pack_format, self._in_packet['packet'])
+
+        with self._out_message_mutex:
+                if mid in self._out_messages:
+                    # Only inform the client the message has been sent once.
+                    rc = self._do_on_publish(mid)
+                    return rc
 
         return MQTT_ERR_SUCCESS
 
@@ -3678,22 +3708,35 @@ class Client(object):
 
         packet_type = PUBACK if cmd == "PUBACK" else PUBCOMP
         packet_type = packet_type >> 4
-        mid, = struct.unpack("!H", self._in_packet['packet'][:2])
+        piece1 = self._in_packet['packet']
+        self.puback = piece1
+        pack_format = "!H" + str(len(self._in_packet['packet']) - 2) + 's'
+        (mid, packet) = struct.unpack(pack_format, self._in_packet['packet'])
+       
+        if self._authenticated == True:
+            self.puback = self._in_packet['packet']
+            puback = self._in_packet['packet']
+            index1 = puback.index(b'::::')
+            mac = puback[index1+4:]
+            piece1 = puback[0:index1]
+
+        
+        #mid, = struct.unpack("!H", piece1[:2])
         if self._protocol == MQTTv5:
             if self._in_packet['remaining_length'] > 2:
-                reasonCode = ReasonCodes(packet_type)
-                reasonCode.unpack(self._in_packet['packet'][2:])
-                if self._in_packet['remaining_length'] > 3:
-                    properties = Properties(packet_type)
-                    props, props_len = properties.unpack(
-                        self._in_packet['packet'][3:])
+                    reasonCode = ReasonCodes(packet_type)
+                    reasonCode.unpack(self._in_packet['packet'][2:])
+                    if self._in_packet['remaining_length'] > 3:
+                        properties = Properties(packet_type)
+                        props, props_len = properties.unpack(
+                            self._in_packet['packet'][3:])
         self._easy_log(MQTT_LOG_DEBUG, "Received %s (Mid: %d)", cmd, mid)
 
         with self._out_message_mutex:
-            if mid in self._out_messages:
-                # Only inform the client the message has been sent once.
-                rc = self._do_on_publish(mid)
-                return rc
+                if mid in self._out_messages:
+                    # Only inform the client the message has been sent once.
+                    rc = self._do_on_publish(mid)
+                    return rc
 
         return MQTT_ERR_SUCCESS
 

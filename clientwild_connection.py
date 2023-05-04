@@ -160,8 +160,20 @@ class MyMQTTClass(mqtt.Client):
         #print("Subscribed, message id: "+str(mid)+ ", QOS: "+str(granted_qos))
         #print("Suback received, message id: "+str(mid))
         logger.log(logging.INFO, "Suback received, message id: "+ str(mid))
-        mac = self.get_mac()
-        logger.log(logging.ERROR, "mac " + str(mac))
+        puback_packet = self.get_mac()
+        logger.log(logging.ERROR, "mac subscribe " + str(puback_packet))
+        index1 = puback_packet.index(b'::::')
+        mac_real =  puback_packet[index1+4:]
+        logger.log(logging.ERROR, "mac " + str(mac_real))
+        byte_packet_id = force_bytes(str(mid), 'utf-8')
+        message = byte_packet_id + b'::::' + b'1'
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(message)
+        signature = h.finalize()
+        logger.log(logging.ERROR, "mac " + str(signature))
+        if (mac_real == signature):
+            logger.log(logging.ERROR, "same " )
+
 
 
     def on_log(self, mqttc, obj, level, string):
@@ -199,7 +211,11 @@ class MyMQTTClass(mqtt.Client):
         def on_publish(client, obj, mid):
             #print("Publish message (step 6 of the DH Key Exchange) was send, messageID =",str(mid))
             logger.log(logging.INFO, "Publish message (step 6 of the DH Key Exchange) was send, messageID =" + str(mid))
+            puback = self.get_puback()
+            logger.log(logging.ERROR, "mac:: " + str(puback))
             self.key_establishment_state = 7
+            
+
 
         client.on_publish = on_publish
         #print("----Function: Prepare publish message for step 6 of the DH key exchange----")
@@ -244,7 +260,7 @@ class MyMQTTClass(mqtt.Client):
 
         #print("MESSAGE (step 6 of the DH Key Exchange): " , data_to_sent)
 
-        client.publish("AuthenticationTopic", data_to_sent, qos = 2)
+        client.publish("AuthenticationTopic", data_to_sent, qos = 1)
 
         self.key_establishment_state = 6
 
@@ -279,7 +295,7 @@ class MyMQTTClass(mqtt.Client):
         logger.log(logging.INFO, b'Encrypted message (step 9 of the DH Key Exchange): ' + encrypted_text)
 
 
-        client.publish("AuthenticationTopic", encrypted_text , qos = 2)
+        client.publish("AuthenticationTopic", encrypted_text , qos = 1)
 
         self.key_establishment_state = 9
         return client
@@ -288,6 +304,21 @@ class MyMQTTClass(mqtt.Client):
         def on_publish(client, obj, mid):
              #print("Puback was received, messageID =",str(mid))
              logger.log(logging.INFO, "Puback was received, messageID =" + str(mid))
+             puback = self.get_puback()
+             logger.log(logging.ERROR, "mac " + str(puback))
+             index1 = puback.index(b'::::')
+             mac_real =  puback[index1+4:]
+             logger.log(logging.ERROR, "mac " + str(mac_real))
+             byte_packet_id = force_bytes(str(mid), 'utf-8')
+             message = byte_packet_id 
+             h = hmac.HMAC(self.session_key, hashes.SHA256())
+             h.update(message)
+             signature = h.finalize()
+             logger.log(logging.ERROR, "mac " + str(signature))
+             if (mac_real == signature):
+                logger.log(logging.ERROR, "same " )
+
+
         client.on_publish = on_publish
         #print("----Function to publish to topic: ", topicName )
         #print("Message to be published: ", message)
@@ -1109,6 +1140,7 @@ class MyMQTTClass(mqtt.Client):
                         logger.log(logging.INFO, "Received nonce 3 and sent nonce 3 are the same")
                         logger.log(logging.INFO, "BROKER IS AUTHENTICATED")
                         self.authenticated = True
+                        self._authenticated = True
                     else:
                         #print("Received nonce 3 and sent nonce 3 are not the same")
                         #print("BROKER CANNOT BE AUTHENTICATED")
@@ -1146,6 +1178,7 @@ class MyMQTTClass(mqtt.Client):
         def on_unsubscribe(self, obj, mid):
 
             logger.log(logging.INFO, "Unsuback was received, messageID =" + str(mid))
+
 
         self.on_unsubscribe = on_unsubscribe
 
