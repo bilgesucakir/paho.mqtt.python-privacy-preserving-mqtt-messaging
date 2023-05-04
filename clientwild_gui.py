@@ -120,11 +120,6 @@ class MyWindowMqtt:
 
         for i in range(self.listbox.size()):
 
-
-
-
-
-            
             elem = self.listbox.get(i)
             subscribed_topics.append(str(elem))
 
@@ -141,7 +136,7 @@ class MyWindowMqtt:
             elif ('#/' in topic1x) :
                 logger.log(logging.ERROR,"Subcribe topic name wildcard error, topic: " + topic1)
             elif topic1 in subscribed_topics:
-                logger.log(logging.ERROR,"This topic is already in the subscribed topics list, you cannot subscribe again: " + topic1)
+                logger.log(logging.ERROR,"You have already subscribed to this topic: " + topic1)
                 
             else:
                 wordlist = topic1x.split('/')
@@ -158,8 +153,6 @@ class MyWindowMqtt:
 
 
         bool_dummy = self.appendToList(self.mqttc)
-        print("DUMMY:", bool_dummy)
-        
 
 
 

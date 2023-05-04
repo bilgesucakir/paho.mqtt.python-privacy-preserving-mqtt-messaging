@@ -161,18 +161,26 @@ class MyMQTTClass(mqtt.Client):
         #print("Suback received, message id: "+str(mid))
         logger.log(logging.INFO, "Suback received, message id: "+ str(mid))
         puback_packet = self.get_mac()
-        logger.log(logging.ERROR, "mac subscribe " + str(puback_packet))
+
+        #logger.log(logging.ERROR, "mac subscribe " + str(puback_packet))
+
         index1 = puback_packet.index(b'::::')
         mac_real =  puback_packet[index1+4:]
-        logger.log(logging.ERROR, "mac " + str(mac_real))
+
+        #logger.log(logging.ERROR, "mac " + str(mac_real))
+
         byte_packet_id = force_bytes(str(mid), 'utf-8')
         message = byte_packet_id + b'::::' + b'1'
         h = hmac.HMAC(self.session_key, hashes.SHA256())
         h.update(message)
         signature = h.finalize()
-        logger.log(logging.ERROR, "mac " + str(signature))
+
+        #logger.log(logging.ERROR, "mac " + str(signature))
+
         if (mac_real == signature):
-            logger.log(logging.ERROR, "same " )
+            logger.log(logging.INFO, "Signature of SUBACK is verified." )
+        else:
+            logger.log(logging.ERROR, "Signature of SUBACK is not verified." )
 
 
 
@@ -182,18 +190,25 @@ class MyMQTTClass(mqtt.Client):
 
         logger.log(logging.INFO, "Unsuback was received, message Id: " + str(mid))
 
-        logger.log(logging.ERROR, "mac " + str(packet_bytes))
+        #logger.log(logging.ERROR, "mac " + str(packet_bytes))
+
         index1 = packet_bytes.index(b'::::')
         mac_real =  packet_bytes[index1+4:]
-        logger.log(logging.ERROR, "mac " + str(mac_real))
+
+        #logger.log(logging.ERROR, "mac " + str(mac_real))
+
         byte_packet_id = force_bytes(str(mid), 'utf-8')
         message = byte_packet_id 
         h = hmac.HMAC(self.session_key, hashes.SHA256())
         h.update(message)
         signature = h.finalize()
-        logger.log(logging.ERROR, "mac " + str(signature))
+
+        #logger.log(logging.ERROR, "mac " + str(signature))
+
         if (mac_real == signature):
-            logger.log(logging.ERROR, "same " )
+            logger.log(logging.INFO, "Signature of UNSUBACK is verified.")
+        else:
+            logger.log(logging.ERROR, "Signature of UNSUBACK is not verified.")
 
 
     def on_log(self, mqttc, obj, level, string):
@@ -322,21 +337,30 @@ class MyMQTTClass(mqtt.Client):
 
     def publish_real_topics(self, client: mqtt, topicName, message) -> mqtt:
         def on_publish(client, obj, mid):
-             #print("Puback was received, messageID =",str(mid))
-             logger.log(logging.INFO, "Puback was received, messageID =" + str(mid))
-             puback = self.get_puback()
-             logger.log(logging.ERROR, "mac " + str(puback))
-             index1 = puback.index(b'::::')
-             mac_real =  puback[index1+4:]
-             logger.log(logging.ERROR, "mac " + str(mac_real))
-             byte_packet_id = force_bytes(str(mid), 'utf-8')
-             message = byte_packet_id 
-             h = hmac.HMAC(self.session_key, hashes.SHA256())
-             h.update(message)
-             signature = h.finalize()
-             logger.log(logging.ERROR, "mac " + str(signature))
-             if (mac_real == signature):
-                logger.log(logging.ERROR, "same " )
+            #print("Puback was received, messageID =",str(mid))
+            logger.log(logging.INFO, "Puback was received, messageID =" + str(mid))
+            puback = self.get_puback()
+
+            #logger.log(logging.ERROR, "mac " + str(puback))
+
+            index1 = puback.index(b'::::')
+            mac_real =  puback[index1+4:]
+
+            #logger.log(logging.ERROR, "mac " + str(mac_real))
+
+            byte_packet_id = force_bytes(str(mid), 'utf-8')
+            message = byte_packet_id 
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(message)
+            signature = h.finalize()
+
+            #logger.log(logging.ERROR, "mac " + str(signature))
+
+            if mac_real == signature:
+                logger.log(logging.INFO, "Signature of PUBACK is verified.")
+            else:
+                logger.log(logging.ERROR, "Signature of PUBACK is not verified.")
+
 
 
         client.on_publish = on_publish
@@ -786,18 +810,26 @@ class MyMQTTClass(mqtt.Client):
 
             packet_bytes = client.get_packet_bytes()
             logger.log(logging.INFO, "Unsuback was received, message Id: " + str(mid))
-            logger.log(logging.ERROR, "mac " + str(packet_bytes))
+
+            #logger.log(logging.ERROR, "mac " + str(packet_bytes))
+
             index1 = packet_bytes.index(b'::::')
             mac_real =  packet_bytes[index1+4:]
-            logger.log(logging.ERROR, "mac " + str(mac_real))
+
+            #logger.log(logging.ERROR, "mac " + str(mac_real))
+
             byte_packet_id = force_bytes(str(mid), 'utf-8')
             message = byte_packet_id 
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(message)
             signature = h.finalize()
-            logger.log(logging.ERROR, "mac " + str(signature))
+
+            #logger.log(logging.ERROR, "mac " + str(signature))
+
             if (mac_real == signature):
-                logger.log(logging.ERROR, "same " )
+                logger.log(logging.INFO, "Signature of UNSUBACK is verified.")
+            else:
+                logger.log(logging.ERROR, "Signature of UNSUBACK is not verified.")
 
 
         self.on_unsubscribe = on_unsubscribe
