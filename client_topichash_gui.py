@@ -234,7 +234,7 @@ class xApp:
         vertical_pane2 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=200)
         horizontal_pane.add(vertical_pane2)
 
-        form_frame = ttk.Labelframe(vertical_pane1, text="client",height=300,width=550)
+        form_frame = ttk.Labelframe(vertical_pane1, text="Client",height=300,width=550)
         vertical_pane1.add(form_frame, weight=1)
 
         #third_frame = ttk.Labelframe(vertical_pane1, text="Third Frame",height=200,width=500)
