@@ -153,7 +153,7 @@ class MyWindowMqtt:
 
         bool_dummy = self.appendToList(self.mqttc)
 
-        self.entry_21.delete(0, tk.END)
+        self.entry_21.delete(0, tk.END) #delete topicname after subscription (the topic anme is alread at the subscribed topics list)
 
 
 
@@ -173,6 +173,10 @@ class MyWindowMqtt:
             print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
 
         #logger.log(lvl, self.message.get())
+
+        self.entry_31.delete(0, tk.END) #delete written topicname after the publish
+        self.entry_32.delete(1.0, tk.END) #delete written message in textbox after the publish
+
 
 
     def client_run4(self):
