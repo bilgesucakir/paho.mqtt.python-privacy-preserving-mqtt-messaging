@@ -84,6 +84,7 @@ class MyMQTTClass(mqtt.Client):
         self.publish_success_topic_hash:list = [] 
 
         self.unsub_success: bool = False
+        self.seed_dictionary = {}
 
 
 
@@ -1536,8 +1537,6 @@ class MyMQTTClass(mqtt.Client):
             logger.log(logging.INFO, "---- 1536 Publish message was received from broker")
             data = msg.payload
             actual_data = data[2:]
-            #print("Encrypted topic: " ,msg.topic )
-            #print(f"Encrypted payload: `{actual_data}`")
             logger.log(logging.INFO, "Encrypted topic: " + msg.topic )
             logger.log(logging.INFO, b'Encrypted payload: ' + actual_data)
             topic_hex = msg.topic
@@ -1594,7 +1593,6 @@ class MyMQTTClass(mqtt.Client):
                 decrypted_data2 = decryptor.update(message_encrypted_with_ct)
                 unpadded_message = padder.update(decrypted_data2) + padder.finalize()
                 #print("Message after decryption with choice token: ", unpadded_message, " from topic: ",  topic_name_str )
-                logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
                 logger.log(logging.INFO, "Topic name: "+  topic_name_str)
 
                 if msg.retain == 0:
@@ -1616,6 +1614,21 @@ class MyMQTTClass(mqtt.Client):
                     #print("The content of the payload is not changed, Mac of the payload is correct")
                     logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
                     #print("MESSAGE: " ,unpadded_message, "FROM ", topic_namepub )
+                    logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
+                    index_of_polynomial = unpadded_message.rfind(b'::::')
+                    topic_list = unpadded_message[0:index_of_polynomial]
+                    topic_list = topic_list.split(b'::::')
+                    for topic_seed_pair in topic_list:
+                        index = topic_seed_pair.index(b'$$$$')
+                        topicName = topic_seed_pair[0:index]
+                        seed = topic_seed_pair[index+4:]
+                        topic_name_str = str(topicName)
+                        seed_str = str(seed)
+                        self.seed_dictionary[topic_name_str] = seed_str
+                    for keys,values in self.seed_dictionary.items():
+                        logger.log(logging.INFO, "Seed dictionary " + keys + ": " + values)
+                        
+
 
                 else:
                     #print("The content of the payload is changed, Mac of the payload is not correct")
@@ -1707,6 +1720,7 @@ class MyMQTTClass(mqtt.Client):
         for topicNameforSeed in topicsListForSeeds:
             seed = cryptogen.randrange(1000000000, 9999999999)
             message += topicNameforSeed + "$$$$" + str(seed) + "::::"
+            logger.log(logging.WARNING, "Topic and Seed Pair =" + topicNameforSeed + ": " + str(seed) )
 
 
         topicName_byte = force_bytes(topicName)
