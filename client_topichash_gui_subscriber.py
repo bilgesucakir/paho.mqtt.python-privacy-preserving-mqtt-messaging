@@ -37,7 +37,7 @@ class TopicHashingSubscriberWindow:
         self.labl_31.place(x=-20,y=60)
         self.entry_31 = tk.Entry(base,state=DISABLED)
         self.entry_31.place(x=10,y=80)
-        self.btn31 = tk.Button(base, text='Submit',width=10, command = self.client_run2,state=DISABLED)
+        self.btn31 = tk.Button(base, text='Submit',width=10, command = self.client_publisher,state=DISABLED)
         self.btn31.place(x=140,y=80)
 
 
@@ -75,6 +75,29 @@ class TopicHashingSubscriberWindow:
         self.btn211 = tk.Button(base, text='Unsubscribe',width=10, command = self.client_run4, state=DISABLED)
         self.btn211.place(x=425, y=140)
 
+        self.labl_42 = tk.Label(base, text="Subscribed Publishers:",width=20,font=("bold", 10))
+        self.labl_42.place(x=-10,y=240)
+
+        #bilgesu modification
+        self.frame2 = tk.Frame(base)
+        self.frame2.place(x=10, y=270)
+
+        self.dummy_list2 = []
+        self.list_items2 = tk.Variable(value=self.dummy_list2)
+        self.listbox2 = tk.Listbox(
+            master=self.frame2,
+            height=10,
+            listvariable=self.list_items2,
+            selectmode=tk.MULTIPLE
+        )
+        self.listbox2.pack(side=tk.LEFT, fill=tk.BOTH)
+
+        self.scrollbar2 = tk.Scrollbar(self.frame2)
+        self.scrollbar2.pack(side = tk.LEFT, fill = tk.BOTH)
+
+        self.listbox2.config(yscrollcommand = self.scrollbar.set)
+        self.scrollbar2.config(command = self.listbox2.yview)
+
         
 
 
@@ -95,6 +118,34 @@ class TopicHashingSubscriberWindow:
         for item in mqttc.subscribe_success:
             self.listbox.insert("end", item) 
         return True
+    
+    def appendToList2(self, mqttc:MyMQTTClass) -> bool:
+        for item in mqttc.subscribe_success_topic_hash:
+            self.listbox2.insert("end", item) 
+        return True
+    
+    def client_publisher(self):
+        publishers = []
+
+        for i in range(self.listbox2.size()):
+
+            elem = self.listbox2.get(i)
+            publishers.append(str(elem))
+
+        publisher_id= self.entry_31.get()
+        logger.log(logging.INFO, "Topic names received from the gui: "+ publisher_id)
+        publisher_id = publisher_id.strip()
+        rc = asyncio.run(self.mqttc.topic_hashing_subscriber_step1(self.client,publisher_id))
+        print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
+
+
+        bool_dummy = self.appendToList2(self.mqttc)
+
+        self.entry_31.delete(0, tk.END) #delete topicname after subscription (the topic anme is alread at the subscribed topics list)
+
+     
+
+
 
     def client_run2(self):
         subscribed_topics = []

@@ -22,6 +22,8 @@ from src.paho_folder.mqtt.client import Client
 from tkinter import*
 from tkinter import  messagebox
 from binascii import unhexlify
+from random import SystemRandom
+cryptogen = SystemRandom()
 
 
 
@@ -75,9 +77,11 @@ class MyMQTTClass(mqtt.Client):
         #fix for now, will be checkec later
 
 
-        self.subscribe_success:list = [] #list of true and falses
-        self.publish_success:list = [] #list of true and falses
-        self.publish_topic_hash:list = [] #list of true and falses
+        self.subscribe_success:list = [] 
+        self.publish_success:list = [] 
+        self.publish_topic_hash_publisher:list = [] 
+        self.subscribe_success_topic_hash = {}
+        self.publish_success_topic_hash:list = [] 
 
         self.unsub_success: bool = False
 
@@ -379,11 +383,7 @@ class MyMQTTClass(mqtt.Client):
         topicName_byte = force_bytes(topicName)
         choiceTokenhex = self.choiceTokenDictionary[topicName]
         choiceToken = unhexlify(choiceTokenhex)
-        #print("224 Choice token from dictionary:",self.choiceTokenDictionary[topicName])
-        #print("225 Topic name from dictionary:",topicName)
-        #print("Choice token of the topic: ", choiceTokenhex )
-
-
+    
 
 
         h = hmac.HMAC(self.session_key, hashes.SHA256())
@@ -440,7 +440,7 @@ class MyMQTTClass(mqtt.Client):
 
         client.publish(encrypted_topic_hex, encrypted_message2 , qos = qos, retain = retainFlag, msgid=msgid)
 
-        self.publishc_success.append(topicName)
+        self.publish_success.append(topicName)
 
 
         return client
@@ -1430,6 +1430,353 @@ class MyMQTTClass(mqtt.Client):
 
 
         return client
+    
+
+    def publish_to_topichashing_clientID(self, client: mqtt, topicName, publisher_id):
+           
+        def on_publish(client, obj, mid):
+            #print("Puback was received, messageID =",str(mid))
+            logger.log(logging.INFO, "Puback was received, messageID =" + str(mid))
+            puback = self.get_puback()
+
+            #logger.log(logging.ERROR, "mac " + str(puback))
+
+            index1 = puback.index(b'::::')
+            mac_real =  puback[index1+4:]
+
+            #logger.log(logging.ERROR, "mac " + str(mac_real))
+
+            byte_packet_id = force_bytes(str(mid), 'utf-8')
+            message = byte_packet_id 
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(message)
+            signature = h.finalize()
+
+            #logger.log(logging.ERROR, "mac " + str(signature))
+
+            if mac_real == signature:
+                logger.log(logging.INFO, "Signature of PUBACK is verified.")
+            else:
+                logger.log(logging.ERROR, "Signature of PUBACK is not verified.")
+
+
+        client.on_publish = on_publish
+        #print("----Function to publish to topic: ", topicName )
+        #print("Message to be published: ", message)
+        logger.log(logging.INFO, "----Function to publish to topic: " + topicName )
+        message = str(self._client_id)
+
+        topicName_byte = force_bytes(topicName)
+        choiceTokenhex = self.choiceTokenDictionary[topicName]
+        choiceToken = unhexlify(choiceTokenhex)
+    
+
+
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(topicName_byte)
+        signature = h.finalize()
+        #signature = b'broken'
+
+        topic_publish = topicName_byte + b'::::' + signature
+
+        backend = default_backend()
+        encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+        padded_data = padder.update(topic_publish) + padder.finalize()
+        encrypted_topic = encryptor.update(padded_data) + encryptor.finalize()
+        encrypted_topic_hex = encrypted_topic.hex()
+        #print("Authenticated encryption version of the topic name to be published: ", encrypted_topic_hex)
+        logger.log(logging.INFO, "Authenticated encryption version of the topic name to be published: " + encrypted_topic_hex)
+
+        message_byte = force_bytes(message)
+
+        choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
+        #print("245 choiceTokenKEY: ", choicetoken_key)
+
+
+
+        encryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).padder()
+        padded_data = padder.update(message_byte) + padder.finalize()
+        encrypted_message = encryptor.update(padded_data) + encryptor.finalize()
+        encrypted_message_byte = force_bytes(encrypted_message)
+        #print("Message after encryption with the choice token: ", encrypted_message)
+        logger.log(logging.INFO, b'Message after encryption with the choice token: '+ encrypted_message)
+
+        qos = 1
+        retainFlag = False
+        msgid = self._mid_generate()
+        hash_message_str = str(qos) + str(retainFlag) + str(msgid)
+        hash_message_bytes = encrypted_message_byte + force_bytes(hash_message_str)
+
+
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(hash_message_bytes)
+        signature2 = h.finalize()
+
+        message_publish = encrypted_message_byte + b'::::' + signature2
+
+
+        encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+        padded_data = padder.update(message_publish) + padder.finalize()
+        encrypted_message2 = encryptor.update(padded_data) + encryptor.finalize()
+        #print("Message after authenticated encyption with the session key: ", encrypted_message2)
+        logger.log(logging.INFO, b'Message after authenticated encyption with the session key: '+ encrypted_message2)
+
+        client.publish(encrypted_topic_hex, encrypted_message2 , qos = qos, retain = retainFlag, msgid=msgid)
+        self.subscribe_success_topic_hash[str(publisher_id)] = 1
+
+
+        return client
+    
+    def subscribe_to_topicHashing_publisher(self, client: mqtt, topicname, publisher_id):
+        def on_message(client, userdata, msg):
+            #print("----Publish message was received from broker")
+            logger.log(logging.INFO, "----Publish message was received from broker")
+            data = msg.payload
+            actual_data = data[2:]
+            #print("Encrypted topic: " ,msg.topic )
+            #print(f"Encrypted payload: `{actual_data}`")
+            logger.log(logging.INFO, b'Encrypted topic: ' + msg.topic )
+            logger.log(logging.INFO, b'Encrypted payload: ' + actual_data)
+            topic_hex = msg.topic
+            topic_byte = unhexlify(topic_hex)
+            backend = default_backend()
+            decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
+            padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
+            decrypted_data = decryptor.update(topic_byte)
+            unpadded = padder.update(decrypted_data) + padder.finalize()
+
+            index1 = unpadded.index(b'::::')
+            topic_name = unpadded[0:index1]
+            mac_of_topic_name = unpadded[index1+4:]
+
+            topic_name_str = bytes.decode(topic_name)
+            choiceTokenhex = self.choiceTokenDictionary[topic_name_str]
+            choiceToken = unhexlify(choiceTokenhex)
+            #print("Choice token from dictionary:",self.choiceTokenDictionary[topic_name_str])
+            #print("Topic name from dictionary:",topic_name_str)
+            #print("Decrypted topic name: ", topic_name_str ," and its mac: ", mac_of_topic_name)
+            #print("Choice token of the topic: ", choiceTokenhex )
+            logger.log(logging.INFO, b'Decrypted topic name: ' + topic_name + b' and its mac: ' + mac_of_topic_name)
+            logger.log(logging.INFO, "Choice token of the topic: "+ choiceTokenhex )
+
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(topic_name)
+            signature = h.finalize()
+
+            if(signature == mac_of_topic_name):
+                #print("The content of the topic name is not changed. Mac of the topic name is correct")
+                logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct")
+
+                data = msg.payload
+                data_len = data[0:2]
+                actual_data = data[2:]
+
+                decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
+                padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
+                decrypted_data = decryptor.update(actual_data)
+                unpadded = padder.update(decrypted_data) + padder.finalize()
+                index1 = unpadded.index(b'::::')
+
+                message_encrypted_with_ct = unpadded[0:index1]
+                mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
+                #print("Message after decryption with session key: ", message_encrypted_with_ct)
+                logger.log(logging.INFO, b'Message after decryption with session key: '+ message_encrypted_with_ct)
+
+                choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
+                #print("Choicetoken key: ", choicetoken_key)
+
+                decryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).decryptor()
+                padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).unpadder()
+                decrypted_data2 = decryptor.update(message_encrypted_with_ct)
+                unpadded_message = padder.update(decrypted_data2) + padder.finalize()
+                #print("Message after decryption with choice token: ", unpadded_message, " from topic: ",  topic_name_str )
+                logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
+                logger.log(logging.INFO, "Topic name: "+  topic_name_str)
+
+                if msg.retain == 0:
+                    retainFlag = False
+                else:
+                    retainFlag = True
+
+                message_hash_str = str(msg.qos) + str(retainFlag) + str(msg.mid)
+                message_bytes_hash = message_encrypted_with_ct + force_bytes(message_hash_str)
+                print("message_hash_str ", message_hash_str)
+                print("message_bytes_hash ", message_bytes_hash)
+
+                h = hmac.HMAC(self.session_key, hashes.SHA256())
+                h.update(message_bytes_hash)
+                signature = h.finalize()
+
+
+                if(signature == mac_of_payload):
+                    #print("The content of the payload is not changed, Mac of the payload is correct")
+                    logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
+                    #print("MESSAGE: " ,unpadded_message, "FROM ", topic_namepub )
+
+                else:
+                    #print("The content of the payload is changed, Mac of the payload is not correct")
+                    logger.log(logging.INFO, "The content of the payload is changed, Mac of the payload is not correct")
+
+            else:
+                #print("The content of the topic name is changed")
+                logger.log(logging.INFO, "The content of the topic name is changed")
+
+ 
+        client.on_message = on_message
+        if(self.subscribe_success_topic_hash[str(publisher_id)] == 1):
+
+            #print("----Function to subscribe to topic: ", topicname )
+            logger.log(logging.INFO, "----Function to subscribe to topic: "+ topicname )
+            topicName_byte = force_bytes(topicname)
+            msgid = self._mid_generate()
+            print("before msgid sub", msgid)
+            qos = 1
+
+            topicname_str = topicname + str(qos) + str(msgid)
+            hash_bytes = force_bytes(topicname_str)
+
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(hash_bytes)
+            signature = h.finalize()
+            #print("MAC of the topic: ", signature )
+            logger.log(logging.INFO, b'MAC of the topic: '+ signature )
+
+
+            topicName_subscribe = topicName_byte + b'::::' + signature
+
+            backend = default_backend()
+            encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+            padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+            padded_data = padder.update(topicName_subscribe) + padder.finalize()
+            topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
+            topicNameEncryptedHex = topicNameEncryptedByte.hex()
+            #print("Authenticated encryption version of the topic:" ,topicNameEncryptedHex )
+            logger.log(logging.INFO, "Authenticated encryption version of the topic:" + topicNameEncryptedHex )
+
+            client.subscribe(topicNameEncryptedHex, qos=qos, msgid = msgid)
+            #print("Subscribed to: " ,topicNameEncryptedHex )
+            logger.log(logging.INFO, "Subscribed to: " + topicNameEncryptedHex )
+            self.subscribe_success_topic_hash[str(publisher_id)] = 2
+
+        
+
+
+        return client
+    
+    def publish_seeds(self, client: mqtt, topicsListForSeeds):
+
+        def on_publish(client, obj, mid):
+            #print("Puback was received, messageID =",str(mid))
+            logger.log(logging.INFO, "Puback was received, messageID =" + str(mid))
+            puback = self.get_puback()
+
+            #logger.log(logging.ERROR, "mac " + str(puback))
+
+            index1 = puback.index(b'::::')
+            mac_real =  puback[index1+4:]
+
+            #logger.log(logging.ERROR, "mac " + str(mac_real))
+
+            byte_packet_id = force_bytes(str(mid), 'utf-8')
+            message = byte_packet_id 
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(message)
+            signature = h.finalize()
+
+            #logger.log(logging.ERROR, "mac " + str(signature))
+
+            if mac_real == signature:
+                logger.log(logging.INFO, "Signature of PUBACK is verified.")
+            else:
+                logger.log(logging.ERROR, "Signature of PUBACK is not verified.")
+
+
+
+        client.on_publish = on_publish
+        #print("----Function to publish to topic: ", topicName )
+        #print("Message to be published: ", message)
+        logger.log(logging.INFO, "----Function to publish to topic: " + topicsListForSeeds )
+
+        topicName = "topicHashing/" + str(self.id_client)
+
+        message = ""
+        
+        for topicNameforSeed in topicsListForSeeds:
+            seed = cryptogen.randrange(1000000000, 9999999999)
+            message += topicNameforSeed + "$$$$" + seed + "::::"
+
+
+        topicName_byte = force_bytes(topicName)
+        choiceTokenhex = self.choiceTokenDictionary[topicName]
+        choiceToken = unhexlify(choiceTokenhex)
+    
+
+
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(topicName_byte)
+        signature = h.finalize()
+        #signature = b'broken'
+
+        topic_publish = topicName_byte + b'::::' + signature
+
+        backend = default_backend()
+        encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+        padded_data = padder.update(topic_publish) + padder.finalize()
+        encrypted_topic = encryptor.update(padded_data) + encryptor.finalize()
+        encrypted_topic_hex = encrypted_topic.hex()
+        #print("Authenticated encryption version of the topic name to be published: ", encrypted_topic_hex)
+        logger.log(logging.INFO, "Authenticated encryption version of the topic name to be published: " + encrypted_topic_hex)
+
+        message_byte = force_bytes(message)
+
+        choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
+        #print("245 choiceTokenKEY: ", choicetoken_key)
+
+
+
+        encryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).padder()
+        padded_data = padder.update(message_byte) + padder.finalize()
+        encrypted_message = encryptor.update(padded_data) + encryptor.finalize()
+        encrypted_message_byte = force_bytes(encrypted_message)
+        #print("Message after encryption with the choice token: ", encrypted_message)
+        logger.log(logging.INFO, b'Message after encryption with the choice token: '+ encrypted_message)
+
+        qos = 1
+        retainFlag = False
+        msgid = self._mid_generate()
+        hash_message_str = str(qos) + str(retainFlag) + str(msgid)
+        hash_message_bytes = encrypted_message_byte + force_bytes(hash_message_str)
+
+
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(hash_message_bytes)
+        signature2 = h.finalize()
+
+        message_publish = encrypted_message_byte + b'::::' + signature2
+
+
+        encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+        padded_data = padder.update(message_publish) + padder.finalize()
+        encrypted_message2 = encryptor.update(padded_data) + encryptor.finalize()
+        #print("Message after authenticated encyption with the session key: ", encrypted_message2)
+        logger.log(logging.INFO, b'Message after authenticated encyption with the session key: '+ encrypted_message2)
+
+        client.publish(encrypted_topic_hex, encrypted_message2 , qos = qos, retain = retainFlag, msgid=msgid)
+
+        self.publish_success.append(topicName)
+
+
+        return client
+
+
+
+        
 
 
     async def run1(self):
@@ -1584,7 +1931,7 @@ class MyMQTTClass(mqtt.Client):
                 #burada fialed to verify maci kontrol et. True ise tekrardan subscribe olma seçeneği gelmeli.
                 stop = False
                 while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
-                        stop = True
+                        #stop = True
                         #logger.log(logging.ERROR, " 1295 Bad MAC message received.")
                         time.sleep(0.1)
                 if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
@@ -1794,7 +2141,7 @@ class MyMQTTClass(mqtt.Client):
         
         
 
-        topicname1 = "topicHashing/" + str(self._client_id)
+        topicname1 = "newParticipant/" + str(self._client_id)
 
         if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname1] = 0
@@ -1826,6 +2173,93 @@ class MyMQTTClass(mqtt.Client):
 
         self.fail_to_verify_mac = False
         stop = False
+        return client
+    
+
+    async def topic_hashing_publisher_seeds(self, client, topicNameList):
+        if (self.disconnect_flag == True):
+            logger.log(logging.ERROR, "the connection was lost.")
+            return client
+
+        self.publish_success_topic_hash = [] #initialize list in each subscribe request as 0
+        logger.log(logging.WARNING,"Topic Name List:"+ topicNameList)
+
+        for topicName in topicNameList:
+            if (self.disconnect_flag == False):
+                self.choice_state_dict[topicName] = 0
+                self.publishForChoiceToken(client,topicName)
+            while (self.choice_state_dict[topicName] != 1 and self.disconnect_flag == False):
+                time.sleep(0.1)
+            if (self.choice_state_dict[topicName] == 1 and self.disconnect_flag == False):
+                #if signVErifyFailed received do not send
+                self.subscribe_encrypted_clientID(client, self.id_client)
+                stop = False
+            while (self.choice_state_dict[topicName] != 2 and self.disconnect_flag == False and stop == False):
+                time.sleep(0.1)
+        
+
+        self.publish_seeds(client, topicNameList) 
+            
+
+
+
+        return client
+
+    
+
+    async def topic_hashing_subscriber_step1(self, client, publisher_id):
+           
+        if (self.disconnect_flag == True):
+            logger.log(logging.ERROR, "the connection was lost.")
+            return client
+
+        self.publish_topic_hash_publisher = [] #initialize list in each subscribe request as 0
+       
+        logger.log(logging.WARNING,"Client ID of Publisher from GUI:" + publisher_id)
+        topicname1 = "newParticipant/" + str(publisher_id)
+        topicname2 = "topicHashing/" + str(publisher_id)
+
+        if (self.disconnect_flag == False):
+            self.choice_state_dict[topicname1] = 0
+            self.publishForChoiceToken(client,topicname1)
+        
+
+                
+
+        while (self.choice_state_dict[topicname1] != 1 and self.disconnect_flag == False):
+                time.sleep(0.1)
+        if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
+                #if signVErifyFailed received do not send
+                self.subscribe_encrypted_clientID(client, self.id_client)
+                stop = False
+        while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
+                #stop = True
+                #logger.log(logging.ERROR, " 1295 Bad MAC message received.")
+                time.sleep(0.1)
+
+        self.subscribe_success_topic_hash[str(publisher_id)] = 0
+        if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
+            self.publish_to_topichashing_clientID(client, topicname1, publisher_id)
+            self.publish_topic_hash_publisher.append(publisher_id)
+        
+        while (self.subscribe_success_topic_hash[str(publisher_id)] != 1 and self.disconnect_flag == False and stop == False):
+                #stop = True
+                #logger.log(logging.ERROR, " 1295 Bad MAC message received.")
+                time.sleep(0.1)
+
+        if (self.subscribe_success_topic_hash[str(publisher_id)]  == 1 and self.disconnect_flag == False):
+            self.subscribe_to_topicHashing_publisher(client, topicname2, publisher_id)
+
+
+        if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
+            self.subscribe_to_topicHashing_publisher(client, topicname2)
+
+
+        if (self.disconnect_flag == True):
+            logger.log(logging.ERROR, "the connection was lost.")
+            return client
+
+        self.fail_to_verify_mac = False
         return client
 
 
