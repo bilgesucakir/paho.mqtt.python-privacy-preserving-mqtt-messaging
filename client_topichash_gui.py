@@ -209,7 +209,7 @@ class xAppMain:
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
         root.title("MQTT CLIENT")
-        root.geometry('450x250')
+        root.geometry('340x190')
 
         # Create the panes and frames
         horizontal_pane = ttk.PanedWindow(self.root,orient=HORIZONTAL)
@@ -235,13 +235,15 @@ class xAppMain:
                   command=self.print_selection)
         self.c3.place(x=10,y=50) 
         """
-        self.c1 = tk.Button(root, text="Normal Auth",width=30, command = self.runxApp1,state=NORMAL)
-        self.c1.place(x=10,y=30)
+        self.clabel = tk.Label(root, text= "Select an option for connecting to the broker:",font=("bold", 10))
+        self.clabel.place(x=10,y=10) 
+        self.c1 = tk.Button(root, text="Authenticated Client (Publisher and Subscriber)",width=40, command = self.runxApp1,state=NORMAL)
+        self.c1.place(x=10,y=40)
 
-        self.c2 = tk.Button(root, text="Topic Hashing Publisher",width=30, command = self.runxApp2,state=NORMAL)
-        self.c2.place(x=10,y=70)
-        self.c3 = tk.Button(root, text="Topic Hashing Subscriber",width=30, command = self.runxApp3,state=NORMAL)
-        self.c3.place(x=10,y=110)
+        self.c2 = tk.Button(root, text="Authenticated Topic Hashing Publisher",width=40, command = self.runxApp2,state=NORMAL)
+        self.c2.place(x=10,y=80)
+        self.c3 = tk.Button(root, text="Authenticated Topic Hashing Subscriber",width=40, command = self.runxApp3,state=NORMAL)
+        self.c3.place(x=10,y=120)
       
         
         self.root.protocol('WM_DELETE_WINDOW', self.quit)
@@ -311,7 +313,7 @@ class xApp2:
         self.mqttc = mqttc
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
-        root.title("MQTT TOPIP HASHING PUBLISHER")
+        root.title("MQTT TOPIC HASHING PUBLISHER")
         root.geometry('1265x680')
 
         # Create the panes and frames
