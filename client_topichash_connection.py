@@ -84,6 +84,7 @@ class MyMQTTClass(mqtt.Client):
         self.publish_success_topic_hash:list = [] 
 
         self.unsub_success: bool = False
+        self.seed_dictionary = {}
 
 
 
@@ -1533,12 +1534,10 @@ class MyMQTTClass(mqtt.Client):
     def subscribe_to_topicHashing_publisher(self, client: mqtt, topicname, publisher_id):
         def on_message(client, userdata, msg):
             #print("----Publish message was received from broker")
-            logger.log(logging.INFO, "----Publish message was received from broker")
+            logger.log(logging.INFO, "---- 1536 Publish message was received from broker")
             data = msg.payload
             actual_data = data[2:]
-            #print("Encrypted topic: " ,msg.topic )
-            #print(f"Encrypted payload: `{actual_data}`")
-            logger.log(logging.INFO, b'Encrypted topic: ' + msg.topic )
+            logger.log(logging.INFO, "Encrypted topic: " + msg.topic )
             logger.log(logging.INFO, b'Encrypted payload: ' + actual_data)
             topic_hex = msg.topic
             topic_byte = unhexlify(topic_hex)
@@ -1547,6 +1546,7 @@ class MyMQTTClass(mqtt.Client):
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
             decrypted_data = decryptor.update(topic_byte)
             unpadded = padder.update(decrypted_data) + padder.finalize()
+            logger.log(logging.INFO, b'Decrypted payload: ' + unpadded)
 
             index1 = unpadded.index(b'::::')
             topic_name = unpadded[0:index1]
@@ -1593,7 +1593,6 @@ class MyMQTTClass(mqtt.Client):
                 decrypted_data2 = decryptor.update(message_encrypted_with_ct)
                 unpadded_message = padder.update(decrypted_data2) + padder.finalize()
                 #print("Message after decryption with choice token: ", unpadded_message, " from topic: ",  topic_name_str )
-                logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
                 logger.log(logging.INFO, "Topic name: "+  topic_name_str)
 
                 if msg.retain == 0:
@@ -1615,6 +1614,21 @@ class MyMQTTClass(mqtt.Client):
                     #print("The content of the payload is not changed, Mac of the payload is correct")
                     logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
                     #print("MESSAGE: " ,unpadded_message, "FROM ", topic_namepub )
+                    logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
+                    index_of_polynomial = unpadded_message.rfind(b'::::')
+                    topic_list = unpadded_message[0:index_of_polynomial]
+                    topic_list = topic_list.split(b'::::')
+                    for topic_seed_pair in topic_list:
+                        index = topic_seed_pair.index(b'$$$$')
+                        topicName = topic_seed_pair[0:index]
+                        seed = topic_seed_pair[index+4:]
+                        topic_name_str = str(topicName)
+                        seed_str = str(seed)
+                        self.seed_dictionary[topic_name_str] = seed_str
+                    for keys,values in self.seed_dictionary.items():
+                        logger.log(logging.INFO, "Seed dictionary " + keys + ": " + values)
+                        
+
 
                 else:
                     #print("The content of the payload is changed, Mac of the payload is not correct")
@@ -1706,6 +1720,7 @@ class MyMQTTClass(mqtt.Client):
         for topicNameforSeed in topicsListForSeeds:
             seed = cryptogen.randrange(1000000000, 9999999999)
             message += topicNameforSeed + "$$$$" + str(seed) + "::::"
+            logger.log(logging.WARNING, "Topic and Seed Pair =" + topicNameforSeed + ": " + str(seed) )
 
 
         topicName_byte = force_bytes(topicName)
@@ -2206,7 +2221,11 @@ class MyMQTTClass(mqtt.Client):
                 stop = False
             while (self.choice_state_dict[topicName] != 2 and self.disconnect_flag == False and stop == False):
                 time.sleep(0.1)
-        
+
+        str_1 = ""
+        for elem in topicNameList:
+            str_1 += str(elem) + " "
+        logger.log(logging.ERROR, str_1)
 
         self.publish_seeds(client, topicNameList) 
             
@@ -2227,12 +2246,30 @@ class MyMQTTClass(mqtt.Client):
         topicname1 = "newParticipant/" + str(publisher_id)
         topicname2 = "topicHashing/" + str(publisher_id)
 
+        
         if (self.disconnect_flag == False):
+            self.choice_state_dict[topicname2] = 0
+            self.publishForChoiceToken(client,topicname2)
+         
+
+        while (self.choice_state_dict[topicname2] != 1 and self.disconnect_flag == False):
+                time.sleep(0.1)
+        if (self.choice_state_dict[topicname2] == 1 and self.disconnect_flag == False):
+                #if signVErifyFailed received do not send
+                self.subscribe_encrypted_clientID(client, self.id_client)
+                stop = False
+        while (self.choice_state_dict[topicname2] != 2 and self.disconnect_flag == False and stop == False):
+                time.sleep(0.1)
+
+        self.subscribe_success_topic_hash[str(publisher_id)] = 0
+        if (self.choice_state_dict[topicname2] == 2 and self.disconnect_flag == False):
+            self.publish_to_topichashing_clientID(client, topicname2, publisher_id)
+            self.publish_topic_hash_publisher.append(publisher_id)
+
+        if (self.disconnect_flag == False and self.choice_state_dict[topicname2] == 2 ):
             self.choice_state_dict[topicname1] = 0
             self.publishForChoiceToken(client,topicname1)
-        
-
-                
+         
 
         while (self.choice_state_dict[topicname1] != 1 and self.disconnect_flag == False):
                 time.sleep(0.1)
@@ -2241,8 +2278,6 @@ class MyMQTTClass(mqtt.Client):
                 self.subscribe_encrypted_clientID(client, self.id_client)
                 stop = False
         while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
-                #stop = True
-                #logger.log(logging.ERROR, " 1295 Bad MAC message received.")
                 time.sleep(0.1)
 
         self.subscribe_success_topic_hash[str(publisher_id)] = 0
@@ -2251,8 +2286,6 @@ class MyMQTTClass(mqtt.Client):
             self.publish_topic_hash_publisher.append(publisher_id)
         
         while (self.subscribe_success_topic_hash[str(publisher_id)] != 1 and self.disconnect_flag == False and stop == False):
-                #stop = True
-                #logger.log(logging.ERROR, " 1295 Bad MAC message received.")
                 time.sleep(0.1)
 
         if (self.subscribe_success_topic_hash[str(publisher_id)]  == 1 and self.disconnect_flag == False):
@@ -2260,7 +2293,7 @@ class MyMQTTClass(mqtt.Client):
 
 
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
-            self.subscribe_to_topicHashing_publisher(client, topicname2)
+            self.subscribe_to_topicHashing_publisher(client, topicname2, publisher_id)
 
 
         if (self.disconnect_flag == True):
