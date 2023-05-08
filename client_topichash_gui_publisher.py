@@ -35,11 +35,11 @@ class TopicHashingPublisherWindow:
         #self.btn12.place(x=110,y=10)
 
 
-        self.labl_31 = tk.Label(base, text="Publishable Topic:",width=20,font=("bold", 10))
-        self.labl_31.place(x=-20,y=60)
+        self.labl_31 = tk.Label(base, text="Topic Name:",width=20,font=("bold", 10))
+        self.labl_31.place(x=-35,y=60)
         self.entry_31 = tk.Entry(base,state=DISABLED)
         self.entry_31.place(x=10,y=80)
-        self.btn31 = tk.Button(base, text='Add',width=10, command = self.appendToPublishabeTopicsList, state=DISABLED)
+        self.btn31 = tk.Button(base, text='Add to Publishabe Topics',width=25, command = self.appendToPublishabeTopicsList, state=DISABLED)
         self.btn31.place(x=160,y=75)
 
         self.labl_32 = tk.Label(base, text="Message to Publish:",width=20,font=("bold", 10))
@@ -73,18 +73,23 @@ class TopicHashingPublisherWindow:
         self.scrollbar.config(command = self.listbox.yview)
         #bilgesu modification
 
-        self.btn33 = tk.Button(base, text='Add Topic to Hash Session',width=20, command = self.appendToHashSessionTopicsList,state=DISABLED)
+        self.btn33 = tk.Button(base, text='Add Topic to Hash Session',width=25, command = self.appendToHashSessionTopicsList,state=DISABLED)
         self.btn33.place(x=160,y=140)
+
+        self.btn331 = tk.Button(base, text='Remove from Publishable Topics',width=25, command = self.removeFromPublishableTopics,state=DISABLED)
+        self.btn331.place(x=160,y=170)
         
 
+
         self.separator = ttk.Separator(base, orient='horizontal')
-        self.separator.place(x=-20, y=330, width=30, bordermode="inside")
+        self.separator.place(x=-20, y=330, width=25, bordermode="inside")
 
         self.labl_22 = tk.Label(base, text="Hash Session",font=("bold", 9))
-        self.labl_22.place(x=10,y=320)
+        self.labl_22.place(x=5,y=320)
 
         self.separator = ttk.Separator(base, orient='horizontal')
-        self.separator.place(x=95, y=330, width=455, bordermode="inside")
+        self.separator.place(x=90, y=330, width=460, bordermode="inside")
+
 
 
         self.labl_34 = tk.Label(base, text="Select From List:",width=20,font=("bold", 10))
@@ -130,14 +135,21 @@ class TopicHashingPublisherWindow:
         #self.btn211['state'] = NORMAL
 
 
+    def removeFromPublishableTopics(self):
 
-    def appendToList(self, mqttc:MyMQTTClass) -> bool:
-        for item in mqttc.publish_success:
-            self.listbox.insert("end", item)
+        selected_topics = self.selected_items()
 
-    
-        return True
-    
+        for elem in selected_topics:
+                idx = self.listbox.get(0, tk.END).index(elem)
+                self.listbox.delete(idx)
+
+
+        size = self.listbox.size()
+        if size < 1:
+            self.btn33['state'] = DISABLED
+            self.btn331['state'] = DISABLED
+
+        
 
 
     def selected_items(self) -> list:
@@ -155,14 +167,54 @@ class TopicHashingPublisherWindow:
         received = received.strip() 
 
         received_list = received.split(",")
-        for item in received_list:
+
+        publishable_topics = []
+        for i in range(self.listbox.size()):
+
+            elem = self.listbox.get(i)
+            publishable_topics.append(str(elem))
+
+
+        list_topicname2 = []
+        for topic1  in received_list:
+            topic1x = topic1.strip()    # remove leading and trailing spaces
+            if (len(topic1x) == 0 or len(topic1x) > 65535 ) :
+                logger.log(logging.ERROR,"Topic name length error, topic: " + topic1)
+            elif topic1x == "#":
+                logger.log(logging.ERROR,"Cannot publish to # in topic hashing session.")
+            elif ('#/' in topic1x) :
+                logger.log(logging.ERROR,"Topic name wildcard error, topic: " + topic1)
+            elif topic1 in publishable_topics:
+                logger.log(logging.ERROR,"You have already added this topic to hash session: " + topic1)    
+            else:
+                wordlist = topic1x.split('/')
+                if any('+' in p or '#' in p for p in wordlist if len(p) > 1) :
+                    logger.log(logging.ERROR,"Topic name wildcard error, topic: " + topic1)
+                else:
+ 
+                    list_topicname2.append(topic1x)
+                    logger.log(logging.INFO,"Added to list of publishable topics: " + topic1)
+
+
+        str_1 = ""
+        count = 0
+        for elem in list_topicname2:
+            if count > 0:
+                str_1 += ", "
+            str_1 += str(elem)
+            count += 1
+
+ 
+        for item in list_topicname2:
             self.listbox.insert("end", item)
 
+       
         #check to enable the next button:
         size = self.listbox.size()
 
         if size > 1:
             self.btn33['state'] = NORMAL
+            self.btn331['state'] = NORMAL
 
 
         self.entry_31.delete(0, tk.END) #delete written topicname after the publish
@@ -173,22 +225,62 @@ class TopicHashingPublisherWindow:
     def appendToHashSessionTopicsList(self):
         received = self.selected_items()
         
-        for item in received:
-            self.listbox2.insert("end", item)
+        
+        
+        hash_session_topics = []
+        for i in range(self.listbox2.size()):
+
+            elem = self.listbox2.get(i)
+            hash_session_topics.append(str(elem))
+
+
+        list_topicname2 = []
+        for topic1  in received:
+            topic1x = topic1.strip()    # remove leading and trailing spaces
+            if (len(topic1x) == 0 or len(topic1x) > 65535 ) :
+                logger.log(logging.ERROR,"Topic name length error, topic: " + topic1)
+            elif ('#/' in topic1x) :
+                logger.log(logging.ERROR,"Topic name wildcard error, topic: " + topic1)
+            elif topic1x in hash_session_topics:
+                logger.log(logging.ERROR,"You have already added this topic to hash session: " + topic1)
+            elif topic1x == "#":
+                logger.log(logging.ERROR,"Cannot publish to # in topic hashing session.")
+            else:
+                wordlist = topic1x.split('/')
+                if any('+' in p or '#' in p for p in wordlist if len(p) > 1) :
+                    logger.log(logging.ERROR,"Topic name wildcard error, topic: " + topic1)
+
+                else:
+                    list_topicname2.append(topic1x)
+
+        
+        if len(list_topicname2) > 0:
+
+            str_1 = ""
+            count = 0
+            for elem in list_topicname2:
+                if count > 0:
+                    str_1 += ", "
+                str_1 += str(elem)
+                count += 1
+
+
+            logger.log(logging.INFO,"topic_hashing_publisher_seeds called for: " + str_1)
+            rc = asyncio.run(self.mqttc.topic_hashing_publisher_seeds(self.client, list_topicname2))
+
+            for item in list_topicname2:
+                self.listbox2.insert("end", item)
+        else:
+            if len(received) < 1:
+                logger.log(logging.ERROR,"Please select a topic form publishable topics in order to add a topic to hash session.")
+
 
         #check to enable publish mgs enrty and publish button
         size = self.listbox2.size()
-
         if size > 0:
             self.btn32['state'] = NORMAL
             self.entry_32['state'] = NORMAL
 
-        str_1 = ""
-        for elem in received:
-            str_1 += str(elem) + " "
-
-        logger.log(logging.INFO,"topic_hashing_publisher_seeds called for: " + str_1)
-        rc = asyncio.run(self.mqttc.topic_hashing_publisher_seeds(self.client, received))
 
         self.entry_32.delete(1.0, tk.END) #delete written message in textbox after the publish
 
@@ -209,8 +301,7 @@ class TopicHashingPublisherWindow:
             logger.log(logging.WARNING,"Publish topic name: " + topicname1)
             rc = asyncio.run(self.mqttc.run3(self.client,topicname1, message))
             print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
-        
-        bool_dummy = self.appendToList(self.mqttc)
+
 
         #logger.log(lvl, self.message.get())
 
