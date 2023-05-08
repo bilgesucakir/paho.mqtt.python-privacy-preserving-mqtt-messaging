@@ -140,8 +140,11 @@ class TopicHashingPublisherWindow:
         selected_topics = self.selected_items()
 
         for elem in selected_topics:
-                idx = self.listbox.get(0, tk.END).index(elem)
-                self.listbox.delete(idx)
+            idx = self.listbox.get(0, tk.END).index(elem)
+            self.listbox.delete(idx)
+
+            logger.log(logging.INFO,"Removed from list of publishable topics: " + elem)
+
 
 
         size = self.listbox.size()
