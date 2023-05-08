@@ -2,18 +2,31 @@ from random import SystemRandom
 import hashlib
 from django.utils.encoding import force_bytes, force_str
 import codecs
+import numpy as np
 
 
 cryptogen = SystemRandom()
 sample = cryptogen.randrange(1000000000, 9999999999)
-print(sample)
+#print(sample)
 sample2 = cryptogen.randrange(100, 999)
-print(sample2)
+#print(sample2)
 
-sample3 = cryptogen.randrange(100, 999)
+
+ 
+def polynomial(x):
+    y = 4 *(x*x*x) + 3*(x*x) + 2 *(x) + 10
+    y = y % 9000
+    y += 1000 
+    print (y)
+ 
+
+sample3 = cryptogen.randrange(1000, 9999)
 print(sample3)
 
+polynomial2(9999)
 
+
+"""
 def hash_vj4(password: str, salt: str):
   dk = hashlib.pbkdf2_hmac('sha512', password.encode(), salt.encode(), 100000)
   print(dk)
@@ -38,7 +51,7 @@ dk8 = hash_vj4(dk6.hex(), str(sample2) )
 
 # write a function that generates the same number between 100 and 999  on both sides of the communication
 
-def polynomial():
+"""
   
 
 

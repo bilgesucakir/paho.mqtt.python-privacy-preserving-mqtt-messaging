@@ -1788,6 +1788,8 @@ class MyMQTTClass(mqtt.Client):
 
         self.publish_success.append(topicName)
 
+        
+
 
         return client
 
