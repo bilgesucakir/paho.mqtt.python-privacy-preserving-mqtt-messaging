@@ -183,8 +183,16 @@ class TopicHashingPublisherWindow:
             self.btn32['state'] = NORMAL
             self.entry_32['state'] = NORMAL
 
+        str_1 = ""
+        for elem in received:
+            str_1 += str(elem) + " "
+
+        logger.log(logging.INFO,"topic_hashing_publisher_seeds called for: " + str_1)
+        rc = asyncio.run(self.mqttc.topic_hashing_publisher_seeds(self.client, received))
 
         self.entry_32.delete(1.0, tk.END) #delete written message in textbox after the publish
+
+
 
 
     def  client_run3(self):
