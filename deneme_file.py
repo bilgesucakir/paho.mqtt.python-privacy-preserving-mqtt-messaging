@@ -34,3 +34,11 @@ dk6 = hash_vj4(dk4.hex(), str(sample2) )
 dk7 =hash_vj4(dk5.hex(), str(sample2) )
 
 dk8 = hash_vj4(dk6.hex(), str(sample2) )
+
+
+# write a function that generates the same number between 100 and 999  on both sides of the communication
+
+def polynomial():
+  
+
+

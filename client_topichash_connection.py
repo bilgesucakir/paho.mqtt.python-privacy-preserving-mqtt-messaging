@@ -1617,6 +1617,8 @@ class MyMQTTClass(mqtt.Client):
                     logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
                     index_of_polynomial = unpadded_message.rfind(b'::::')
                     topic_list = unpadded_message[0:index_of_polynomial]
+                    polynomial = unpadded_message[index_of_polynomial+4:]
+                    logger.log(logging.INFO, "polynomial " + str(polynomial))
                     topic_list = topic_list.split(b'::::')
                     for topic_seed_pair in topic_list:
                         index = topic_seed_pair.index(b'$$$$')
@@ -1721,8 +1723,9 @@ class MyMQTTClass(mqtt.Client):
             seed = cryptogen.randrange(1000000000, 9999999999)
             message += topicNameforSeed + "$$$$" + str(seed) + "::::"
             logger.log(logging.WARNING, "Topic and Seed Pair =" + topicNameforSeed + ": " + str(seed) )
-
-
+        seed = cryptogen.randrange(1000, 9999)
+        message +=  str(seed) 
+        logger.log(logging.WARNING, "Polynomial =" + str(seed) )
         topicName_byte = force_bytes(topicName)
         choiceTokenhex = self.choiceTokenDictionary[topicName]
         choiceToken = unhexlify(choiceTokenhex)
