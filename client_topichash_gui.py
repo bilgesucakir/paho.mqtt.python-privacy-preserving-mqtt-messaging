@@ -8,21 +8,19 @@ import threading
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 from tkinter import ttk, VERTICAL, HORIZONTAL, N, S, E, W
-
-
-#from tkinter import*
 from tkinter import  messagebox
 from tkinter.constants import DISABLED, NORMAL
-
 from client_topichash_connection import MyMQTTClass
-
 from client_topichash_logging import *
+from client_topichash_gui_publisher import TopicHashingPublisherWindow
+from client_topichash_gui_subscriber import TopicHashingSubscriberWindow
 
 import asyncio
 
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("clientwild_logging")
+
 
 class MyWindowMqtt:
     def __init__(self, base, mqttc):
@@ -108,15 +106,10 @@ class MyWindowMqtt:
     def appendToList(self, mqttc:MyMQTTClass) -> bool:
         for item in mqttc.subscribe_success:
             self.listbox.insert("end", item)
-
-        
-
         return True
 
     def  client_run2(self):
-
         subscribed_topics = []
-
         for i in range(self.listbox.size()):
 
             elem = self.listbox.get(i)
@@ -149,10 +142,7 @@ class MyWindowMqtt:
 
         rc = asyncio.run(self.mqttc.run2(self.client,list_topicname2))
         print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
-
-
         bool_dummy = self.appendToList(self.mqttc)
-
         self.entry_21.delete(0, tk.END) #delete topicname after subscription (the topic anme is alread at the subscribed topics list)
 
 
@@ -189,41 +179,99 @@ class MyWindowMqtt:
         rc = asyncio.run(self.mqttc.run4(self.client, selected_topics))
 
 
-
-
         if self.mqttc.unsub_success:
             for elem in selected_topics:
                 idx = self.listbox.get(0, tk.END).index(elem)
                 self.listbox.delete(idx)
-
                 #logger.log(logging.INFO, "Successfully unsubscribe from topic: "+ str(elem)) #while loop needed to display this at the very end of client_run4
-
 
         print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
 
 
-
-
     def selected_items(self) -> list:
-
         return_list = []
 
         for index in self.listbox.curselection():
             return_list.append(str(self.listbox.get(index)))
 
         return return_list
+    
+        
 
-
-class xApp:
+    
+class xAppMain:
 
     def __init__(self, root,mqttc):
 
         self.root = root
         self.mqttc = mqttc
-        root.title('Mqtt Client')
+        self.value = None
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
         root.title("MQTT CLIENT")
+        root.geometry('450x250')
+
+        # Create the panes and frames
+        horizontal_pane = ttk.PanedWindow(self.root,orient=HORIZONTAL)
+        horizontal_pane.grid(row=0, column=0, sticky="nsew")
+        vertical_pane1 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=550)
+        horizontal_pane.add(vertical_pane1)
+      
+
+        form_frame = ttk.Labelframe(vertical_pane1,height=300,width=550)
+        vertical_pane1.add(form_frame, weight=1)
+
+        self.client = None
+       
+        """
+        self.var = tk.IntVar()
+        self.c1 = tk.Radiobutton(root, text="Option 1", variable=self.var, value=1,
+                  command=self.print_selection)
+        self.c1.place(x=10,y=10)
+        self.c2 = tk.Radiobutton(root, text="Option 2", variable=self.var, value=2,
+                  command=self.print_selection)
+        self.c2.place(x=10,y=30) 
+        self.c3 = tk.Radiobutton(root, text="Option 3", variable=self.var, value=3,
+                  command=self.print_selection)
+        self.c3.place(x=10,y=50) 
+        """
+        self.c1 = tk.Button(root, text="Normal Auth",width=30, command = self.runxApp1,state=NORMAL)
+        self.c1.place(x=10,y=30)
+
+        self.c2 = tk.Button(root, text="Topic Hashing Publisher",width=30, command = self.runxApp2,state=NORMAL)
+        self.c2.place(x=10,y=70)
+        self.c3 = tk.Button(root, text="Topic Hashing Subscriber",width=30, command = self.runxApp3,state=NORMAL)
+        self.c3.place(x=10,y=110)
+      
+        
+        self.root.protocol('WM_DELETE_WINDOW', self.quit)
+        self.root.bind('<Control-q>', self.quit)
+        signal.signal(signal.SIGINT, self.quit)
+
+    def runxApp1(self):
+        return xApp1(self.root, self.mqttc)
+    def runxApp2(self):
+        return xApp2(self.root, self.mqttc)
+    def runxApp3(self):
+        return xApp3(self.root, self.mqttc)
+
+
+
+    def quit(self, *args):
+        #self.clock.stop()
+        self.root.destroy()
+
+
+
+class xApp1:
+
+    def __init__(self, root,mqttc):
+
+        self.root = root
+        self.mqttc = mqttc
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(0, weight=1)
+        root.title("MQTT DEFAULT AUTH CLIENT")
         root.geometry('1265x680')
 
         # Create the panes and frames
@@ -234,7 +282,7 @@ class xApp:
         vertical_pane2 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=200)
         horizontal_pane.add(vertical_pane2)
 
-        form_frame = ttk.Labelframe(vertical_pane1, text="Client",height=300,width=550)
+        form_frame = ttk.Labelframe(vertical_pane1,height=300,width=550)
         vertical_pane1.add(form_frame, weight=1)
 
         #third_frame = ttk.Labelframe(vertical_pane1, text="Third Frame",height=200,width=500)
@@ -247,11 +295,85 @@ class xApp:
         # Initialize all frames
         self.form = MyWindowMqtt(form_frame,mqttc)
         self.console = ConsoleUi(console_frame)
-        #self.third = FormUi(third_frame)
+        self.root.protocol('WM_DELETE_WINDOW', self.quit)
+        self.root.bind('<Control-q>', self.quit)
+        signal.signal(signal.SIGINT, self.quit)
 
-        #print("self.mqttc._client_id=",self.mqttc._client_id)
-        #self.clock = Clock()
-        #self.clock.start()
+    def quit(self, *args):
+        #self.clock.stop()
+        self.root.destroy()
+
+class xApp2:
+
+    def __init__(self, root,mqttc):
+
+        self.root = root
+        self.mqttc = mqttc
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(0, weight=1)
+        root.title("MQTT TOPIP HASHING PUBLISHER")
+        root.geometry('1265x680')
+
+        # Create the panes and frames
+        horizontal_pane = ttk.PanedWindow(self.root,orient=HORIZONTAL)
+        horizontal_pane.grid(row=0, column=0, sticky="nsew")
+        vertical_pane1 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=550)
+        horizontal_pane.add(vertical_pane1)
+        vertical_pane2 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=200)
+        horizontal_pane.add(vertical_pane2)
+
+        form_frame = ttk.Labelframe(vertical_pane1,height=300,width=550)
+        vertical_pane1.add(form_frame, weight=1)
+
+
+        console_frame = ttk.Labelframe(vertical_pane2 , text="Console",height=600,width=200, padding=(5,0,0,0))
+        vertical_pane2.add(console_frame, weight=1)
+
+
+        # Initialize all frames
+        self.form = TopicHashingPublisherWindow(form_frame,mqttc)
+        self.console = ConsoleUi(console_frame)
+        self.root.protocol('WM_DELETE_WINDOW', self.quit)
+        self.root.bind('<Control-q>', self.quit)
+        signal.signal(signal.SIGINT, self.quit)
+
+
+
+
+    def quit(self, *args):
+        #self.clock.stop()
+        self.root.destroy()
+
+
+class xApp3:
+
+    def __init__(self, root,mqttc):
+
+        self.root = root
+        self.mqttc = mqttc
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(0, weight=1)
+        root.title("MQTT TOPIC HASHING SUBSCRIBER")
+        root.geometry('1265x680')
+
+        # Create the panes and frames
+        horizontal_pane = ttk.PanedWindow(self.root,orient=HORIZONTAL)
+        horizontal_pane.grid(row=0, column=0, sticky="nsew")
+        vertical_pane1 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=550)
+        horizontal_pane.add(vertical_pane1)
+        vertical_pane2 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=200)
+        horizontal_pane.add(vertical_pane2)
+
+        form_frame = ttk.Labelframe(vertical_pane1,height=300,width=550)
+        vertical_pane1.add(form_frame, weight=1)
+
+        console_frame = ttk.Labelframe(vertical_pane2 , text="Console",height=600,width=200, padding=(5,0,0,0))
+        vertical_pane2.add(console_frame, weight=1)
+
+
+        # Initialize all frames
+        self.form = TopicHashingSubscriberWindow(form_frame,mqttc)
+        self.console = ConsoleUi(console_frame)
         self.root.protocol('WM_DELETE_WINDOW', self.quit)
         self.root.bind('<Control-q>', self.quit)
         signal.signal(signal.SIGINT, self.quit)
@@ -269,7 +391,7 @@ def main():
 
     myMqttc1 = MyMQTTClass()
     root = tk.Tk()
-    xapp = xApp(root,myMqttc1)
+    xapp = xAppMain(root,myMqttc1)
     xapp.root.mainloop()
 
 

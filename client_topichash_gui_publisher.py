@@ -24,7 +24,7 @@ import asyncio
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("clientwild_logging")
 
-class MyWindowMqtt:
+class TopicHashingPublisherWindow:
     def __init__(self, base, mqttc):
         self.mqttc = mqttc
         self.client = None
