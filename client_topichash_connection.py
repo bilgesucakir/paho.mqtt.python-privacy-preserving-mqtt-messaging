@@ -2183,6 +2183,18 @@ class MyMQTTClass(mqtt.Client):
 
         self.publish_success_topic_hash = [] #initialize list in each subscribe request as 0
         logger.log(logging.WARNING,"Topic Name List:"+ topicNameList)
+        topicname_hashing = "topicHashing/" + str(self.id_client)
+        if (self.disconnect_flag == False):
+                self.choice_state_dict[topicname_hashing] = 0
+                self.publishForChoiceToken(client,topicname_hashing)
+        while (self.choice_state_dict[topicname_hashing] != 1 and self.disconnect_flag == False):
+                time.sleep(0.1)
+        if (self.choice_state_dict[topicname_hashing] == 1 and self.disconnect_flag == False):
+                #if signVErifyFailed received do not send
+                self.subscribe_encrypted_clientID(client, self.id_client)
+                stop = False
+        while (self.choice_state_dict[topicname_hashing] != 2 and self.disconnect_flag == False and stop == False):
+                time.sleep(0.1)
 
         for topicName in topicNameList:
             if (self.disconnect_flag == False):
@@ -2200,8 +2212,6 @@ class MyMQTTClass(mqtt.Client):
 
         self.publish_seeds(client, topicNameList) 
             
-
-
 
         return client
 
