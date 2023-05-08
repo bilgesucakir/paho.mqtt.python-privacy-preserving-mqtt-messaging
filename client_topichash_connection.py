@@ -1685,7 +1685,7 @@ class MyMQTTClass(mqtt.Client):
         return client
     
 
-    async def connection_for_topic_hashing(self):
+    async def connection_for_topic_hashing_publisher(self):
         
         id_client = str(random.randint(0, 100000000))
         self.id_client = id_client
@@ -1815,7 +1815,7 @@ class MyMQTTClass(mqtt.Client):
 
         if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
                 self.subscribe_for_topic_hashing(client, topicname1)
-                logger.log(logging.WARNING, "The publisher was subscribed to " + topicname1 + " for learn the   subscribers who want to subscribe itself." )
+                logger.log(logging.WARNING, "The publisher was subscribed to " + topicname1 + " to learn the   subscribers who want to subscribe itself." )
 
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
                 self.subscribe4(client, True, False)

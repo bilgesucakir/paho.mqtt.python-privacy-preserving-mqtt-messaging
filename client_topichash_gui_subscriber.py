@@ -33,20 +33,27 @@ class TopicHashingSubscriberWindow:
         #self.btn12 = tk.Button(base, text="Disconnect",width=10,state=DISABLED)
         #self.btn12.place(x=110,y=10)
 
+        self.labl_31 = tk.Label(base, text= " Client ID of the Publisher that you want to subscribe:",width=45,font=("bold", 10))
+        self.labl_31.place(x=-20,y=60)
+        self.entry_31 = tk.Entry(base,state=DISABLED)
+        self.entry_31.place(x=10,y=80)
+        self.btn31 = tk.Button(base, text='Submit',width=10, command = self.client_run2,state=DISABLED)
+        self.btn31.place(x=140,y=80)
+
 
         self.labl_21 = tk.Label(base, text="Subscribe to a Topic:",width=20,font=("bold", 10))
-        self.labl_21.place(x=-10,y=60)
+        self.labl_21.place(x=-10,y=160)
         self.entry_21 = tk.Entry(base,state=DISABLED)
-        self.entry_21.place(x=10,y=80)
+        self.entry_21.place(x=10,y=180)
         self.btn21 = tk.Button(base, text='Subscribe',width=10, command = self.client_run2,state=DISABLED)
-        self.btn21.place(x=160,y=75)
+        self.btn21.place(x=140,y=175)
 
         self.labl_22 = tk.Label(base, text="Subscribed Topics:",width=20,font=("bold", 10))
-        self.labl_22.place(x=-15,y=120)
+        self.labl_22.place(x=260,y=110)
 
         #bilgesu modification
         self.frame = tk.Frame(base)
-        self.frame.place(x=10, y=140)
+        self.frame.place(x=275, y=140)
 
         self.dummy_list = []
         self.list_items = tk.Variable(value=self.dummy_list)
@@ -66,7 +73,7 @@ class TopicHashingSubscriberWindow:
         #bilgesu modification
 
         self.btn211 = tk.Button(base, text='Unsubscribe',width=10, command = self.client_run4, state=DISABLED)
-        self.btn211.place(x=160, y=140)
+        self.btn211.place(x=425, y=140)
 
         
 
@@ -79,21 +86,17 @@ class TopicHashingSubscriberWindow:
         self.client = client
         self.btn21['state'] = NORMAL
         self.entry_21['state'] = NORMAL
-
-        self.btn211['state'] = NORMAL
+        self.btn31['state'] = NORMAL
+        self.entry_31['state'] = NORMAL
 
 
 
     def appendToList(self, mqttc:MyMQTTClass) -> bool:
         for item in mqttc.subscribe_success:
-            self.listbox.insert("end", item)
-
-        
-
+            self.listbox.insert("end", item) 
         return True
 
     def client_run2(self):
-
         subscribed_topics = []
 
         for i in range(self.listbox.size()):
@@ -173,65 +176,6 @@ class TopicHashingSubscriberWindow:
         return return_list
 
 
-class xApp:
-
-    def __init__(self, root,mqttc):
-
-        self.root = root
-        self.mqttc = mqttc
-        root.title('Mqtt Client')
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
-        root.title("MQTT CLIENT")
-        root.geometry('1265x680')
-
-        # Create the panes and frames
-        horizontal_pane = ttk.PanedWindow(self.root,orient=HORIZONTAL)
-        horizontal_pane.grid(row=0, column=0, sticky="nsew")
-        vertical_pane1 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=550)
-        horizontal_pane.add(vertical_pane1)
-        vertical_pane2 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=200)
-        horizontal_pane.add(vertical_pane2)
-
-        form_frame = ttk.Labelframe(vertical_pane1, text="Client",height=300,width=550)
-        vertical_pane1.add(form_frame, weight=1)
-
-        #third_frame = ttk.Labelframe(vertical_pane1, text="Third Frame",height=200,width=500)
-        #vertical_pane1.add(third_frame, weight=2)
-
-        console_frame = ttk.Labelframe(vertical_pane2 , text="Console",height=600,width=200, padding=(5,0,0,0))
-        vertical_pane2.add(console_frame, weight=1)
-
-
-        # Initialize all frames
-        self.form = MyWindowMqtt(form_frame,mqttc)
-        self.console = ConsoleUi(console_frame)
-        #self.third = FormUi(third_frame)
-
-        #print("self.mqttc._client_id=",self.mqttc._client_id)
-        #self.clock = Clock()
-        #self.clock.start()
-        self.root.protocol('WM_DELETE_WINDOW', self.quit)
-        self.root.bind('<Control-q>', self.quit)
-        signal.signal(signal.SIGINT, self.quit)
 
 
 
-
-    def quit(self, *args):
-        #self.clock.stop()
-        self.root.destroy()
-
-
-def main():
-
-
-    myMqttc1 = MyMQTTClass()
-    root = tk.Tk()
-    xapp = xApp(root,myMqttc1)
-    xapp.root.mainloop()
-
-
-
-if __name__ == '__main__':
-    main()

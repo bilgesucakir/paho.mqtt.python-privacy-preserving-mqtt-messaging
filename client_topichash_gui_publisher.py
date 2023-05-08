@@ -80,7 +80,7 @@ class TopicHashingPublisherWindow:
     def client_run1(self):
 
         self.btn11['state'] = DISABLED
-        client = asyncio.run(self.mqttc.connection_for_topic_hashing())
+        client = asyncio.run(self.mqttc.connection_for_topic_hashing_publisher())
         print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
         self.client = client
         
@@ -126,65 +126,3 @@ class TopicHashingPublisherWindow:
 
 
 
-class xApp:
-
-    def __init__(self, root,mqttc):
-
-        self.root = root
-        self.mqttc = mqttc
-        root.title('Mqtt Client')
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
-        root.title("MQTT CLIENT")
-        root.geometry('1265x680')
-
-        # Create the panes and frames
-        horizontal_pane = ttk.PanedWindow(self.root,orient=HORIZONTAL)
-        horizontal_pane.grid(row=0, column=0, sticky="nsew")
-        vertical_pane1 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=550)
-        horizontal_pane.add(vertical_pane1)
-        vertical_pane2 = ttk.PanedWindow(horizontal_pane,orient=VERTICAL,height=500,width=200)
-        horizontal_pane.add(vertical_pane2)
-
-        form_frame = ttk.Labelframe(vertical_pane1, text="Client",height=300,width=550)
-        vertical_pane1.add(form_frame, weight=1)
-
-        #third_frame = ttk.Labelframe(vertical_pane1, text="Third Frame",height=200,width=500)
-        #vertical_pane1.add(third_frame, weight=2)
-
-        console_frame = ttk.Labelframe(vertical_pane2 , text="Console",height=600,width=200, padding=(5,0,0,0))
-        vertical_pane2.add(console_frame, weight=1)
-
-
-        # Initialize all frames
-        self.form = MyWindowMqtt(form_frame,mqttc)
-        self.console = ConsoleUi(console_frame)
-        #self.third = FormUi(third_frame)
-
-        #print("self.mqttc._client_id=",self.mqttc._client_id)
-        #self.clock = Clock()
-        #self.clock.start()
-        self.root.protocol('WM_DELETE_WINDOW', self.quit)
-        self.root.bind('<Control-q>', self.quit)
-        signal.signal(signal.SIGINT, self.quit)
-
-
-
-
-    def quit(self, *args):
-        #self.clock.stop()
-        self.root.destroy()
-
-
-def main():
-
-
-    myMqttc1 = MyMQTTClass()
-    root = tk.Tk()
-    xapp = xApp(root,myMqttc1)
-    xapp.root.mainloop()
-
-
-
-if __name__ == '__main__':
-    main()
