@@ -1698,7 +1698,6 @@ class MyMQTTClass(mqtt.Client):
         client.on_publish = on_publish
         #print("----Function to publish to topic: ", topicName )
         #print("Message to be published: ", message)
-        logger.log(logging.INFO, "----Function to publish to topic: " + topicsListForSeeds )
 
         topicName = "topicHashing/" + str(self.id_client)
 
@@ -1706,7 +1705,7 @@ class MyMQTTClass(mqtt.Client):
         
         for topicNameforSeed in topicsListForSeeds:
             seed = cryptogen.randrange(1000000000, 9999999999)
-            message += topicNameforSeed + "$$$$" + seed + "::::"
+            message += topicNameforSeed + "$$$$" + str(seed) + "::::"
 
 
         topicName_byte = force_bytes(topicName)
@@ -2180,9 +2179,8 @@ class MyMQTTClass(mqtt.Client):
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return client
-
+        
         self.publish_success_topic_hash = [] #initialize list in each subscribe request as 0
-        logger.log(logging.WARNING,"Topic Name List:"+ topicNameList)
 
         for topicName in topicNameList:
             if (self.disconnect_flag == False):
