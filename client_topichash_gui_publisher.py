@@ -28,13 +28,18 @@ class TopicHashingPublisherWindow:
     def __init__(self, base, mqttc):
         self.mqttc = mqttc
         self.client = None
+        self.label_id = None
+    
 
         self.btn11 = tk.Button(base, text="Connect",width=10, command = self.client_run1,state=NORMAL)
         self.btn11.place(x=10,y=10)
         #self.btn12 = tk.Button(base, text="Disconnect",width=10,state=DISABLED)
         #self.btn12.place(x=110,y=10)
+        self.labl_id1 = tk.Label(base, text = "", width=20,font=("bold", 10))
+        self.labl_id1.place(x=125,y=10)
+        
 
-
+      
         self.labl_31 = tk.Label(base, text="Topic Name:",width=20,font=("bold", 10))
         self.labl_31.place(x=-35,y=60)
         self.entry_31 = tk.Entry(base,state=DISABLED)
@@ -130,6 +135,11 @@ class TopicHashingPublisherWindow:
 
         self.btn31['state'] = NORMAL
         self.entry_31['state'] = NORMAL
+        self.label_id = self.mqttc.id_client
+        id = "Client ID: " + self.label_id
+        self.labl_id1.config(text = id)
+       
+       
 
 
         #self.btn211['state'] = NORMAL
