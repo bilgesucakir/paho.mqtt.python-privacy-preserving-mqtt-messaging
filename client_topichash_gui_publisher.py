@@ -44,7 +44,7 @@ class TopicHashingPublisherWindow:
         self.labl_31.place(x=-35,y=60)
         self.entry_31 = tk.Entry(base,state=DISABLED)
         self.entry_31.place(x=10,y=80)
-        self.btn31 = tk.Button(base, text='Add to Publishabe Topics',width=25, command = self.appendToPublishabeTopicsList, state=DISABLED)
+        self.btn31 = tk.Button(base, text='Add to Publishable Topics',width=25, command = self.appendToPublishabeTopicsList, state=DISABLED)
         self.btn31.place(x=160,y=75)
 
         self.labl_32 = tk.Label(base, text="Message to Publish:",width=20,font=("bold", 10))
@@ -174,6 +174,15 @@ class TopicHashingPublisherWindow:
 
         return return_list
     
+    def selected_items2(self) -> list:
+
+        return_list = []
+
+        for index in self.listbox2.curselection():
+            xstr = str(self.listbox2.get(index))
+        print(xstr)
+        return xstr
+    
 
     def appendToPublishabeTopicsList(self):
         received = self.entry_31.get()
@@ -297,12 +306,10 @@ class TopicHashingPublisherWindow:
 
         self.entry_32.delete(1.0, tk.END) #delete written message in textbox after the publish
 
+ 
 
-
-
-    def  client_run3(self):
-        topicname1 = self.entry_31.get()
-        topicname1 = topicname1.strip()    # remove leading and trailing spaces
+    def client_run3(self):
+        topicname1 = self.selected_items2()
         print("TOPICNAME1",topicname1)
         message = self.entry_32.get("1.0",tk.END)
         # Search for + or # in a topic.
@@ -312,11 +319,10 @@ class TopicHashingPublisherWindow:
             logger.log(logging.ERROR,"Publish topic name should have length less than 65535 ")
         else:
             logger.log(logging.WARNING,"Publish topic name: " + topicname1)
-            rc = asyncio.run(self.mqttc.run3(self.client,topicname1, message))
+            rc = asyncio.run(self.mqttc.hash_session_real_publishes(self.client,topicname1, message))
             print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
 
 
-        #logger.log(lvl, self.message.get())
 
         self.entry_31.delete(0, tk.END) #delete written topicname after the publish
         self.entry_32.delete(1.0, tk.END) #delete written message in textbox after the publish
