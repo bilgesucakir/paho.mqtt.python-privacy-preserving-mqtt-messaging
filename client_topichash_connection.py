@@ -94,9 +94,10 @@ class MyMQTTClass(mqtt.Client):
         self.publisher_topic_dictionary = {}       #used by subscribers
         self.polynomials:list = []
 
-        self.MAX_COUNT = 10
+        self.MAX_COUNT = 5
         self.count = 1
         self.publisher_hash_session_topics = {}   #used by publisher
+        self.hash_session_end = False            #used by publisher
 
 
 
@@ -1752,6 +1753,7 @@ class MyMQTTClass(mqtt.Client):
 
 
         client.on_publish = on_publish
+        self.hash_session_end = False
         #print("----Function to publish to topic: ", topicName )
         #print("Message to be published: ", message)
 
@@ -2561,14 +2563,18 @@ class MyMQTTClass(mqtt.Client):
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return client
-        elif (self.disconnect_flag == False and self.MAX_COUNT != self.count):
+        elif (self.disconnect_flag == False and self.MAX_COUNT +1 != self.count):
             for key,item in self.publisher_hash_session_topics.items():
                 topicNameList.append(key)
             self.real_topic_hash_publish(client,topicName, topicNameList, message)
-        if (self.count == self.MAX_COUNT):
+        if (self.count == self.MAX_COUNT +1):
             self.publisher_hash_session_topics.clear()
             self.publisher_seed_dictionary.clear()
             self.topicname_hash_dictionary.clear()
+            self.hash_session_end = True
+            self.count = 1
+            print("here 2573")
+  
             
 
 

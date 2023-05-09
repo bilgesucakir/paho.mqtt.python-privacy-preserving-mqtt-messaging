@@ -175,12 +175,10 @@ class TopicHashingPublisherWindow:
         return return_list
     
     def selected_items2(self) -> list:
-
-        return_list = []
+        xstr = None
 
         for index in self.listbox2.curselection():
             xstr = str(self.listbox2.get(index))
-        print(xstr)
         return xstr
     
 
@@ -245,15 +243,13 @@ class TopicHashingPublisherWindow:
 
             
     def appendToHashSessionTopicsList(self):
-        received = self.selected_items()
-        
-        
-        
+        received = self.selected_items() 
         hash_session_topics = []
         for i in range(self.listbox2.size()):
 
             elem = self.listbox2.get(i)
             hash_session_topics.append(str(elem))
+        self.btn33['state'] = DISABLED
 
 
         list_topicname2 = []
@@ -317,10 +313,22 @@ class TopicHashingPublisherWindow:
             logger.log(logging.ERROR,"Publish topic name should not include the + or # wildcards")
         elif len(topicname1) > 65535:
             logger.log(logging.ERROR,"Publish topic name should have length less than 65535 ")
+        elif topicname1 == None:
+            logger.log(logging.ERROR,"Topic name is none ")
         else:
             logger.log(logging.WARNING,"Publish topic name: " + topicname1)
             rc = asyncio.run(self.mqttc.hash_session_real_publishes(self.client,topicname1, message))
             print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
+        if(self.mqttc.hash_session_end == True):
+            logger.log(logging.WARNING,"Hash session was ended")
+            self.btn33['state'] = NORMAL
+            self.btn32['state'] = DISABLED
+            self.listbox2.delete(0,"end")
+            self.entry_32.delete(1.0, tk.END)
+            print("here")
+        
+        
+
 
 
 
