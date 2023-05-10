@@ -251,13 +251,11 @@ class MyMQTTClass(mqtt.Client):
 
         if (mac_real == signature):
             logger.log(logging.INFO, "Signature of UNSUBACK is verified.")
-            logger.log(logging.INFO, "HERE1")
+
         else:
             logger.log(logging.ERROR, "Signature of UNSUBACK is not verified.")
 
-
-
-
+            self.unsuback_verified = False
             #need to take an action here
 
 
@@ -886,13 +884,11 @@ class MyMQTTClass(mqtt.Client):
 
             if (mac_real == signature):
                 logger.log(logging.INFO, "Signature of UNSUBACK is verified.")
-
-
-
+                self.unverified_unsuback_topics_list.append(True)
             else:
-                logger.log(logging.ERROR, "Signature of UNSUBACK is not verified.")
-
-
+                logger.log(logging.ERROR, "Signature of UNSUBACK is not verified. Please try again to unsubscribe from the topic(s).")
+                self.unsuback_verified = False
+                self.unverified_unsuback_topics_list.append(False)
 
         self.on_unsubscribe = on_unsubscribe
 
@@ -2172,7 +2168,7 @@ class MyMQTTClass(mqtt.Client):
 
         print("Topic names received from the gui:", topicname_list)
         #logger.log(logging.INFO, "Topic names received from the gui:"+ topicname_list)
-        
+
         #modification
         list_failed_suback = []
 
@@ -2217,6 +2213,58 @@ class MyMQTTClass(mqtt.Client):
 
         #modification
         self.unverified_suback_topics_list = list_failed_suback
+
+
+        if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
+            self.subscribe4(client, False, False)
+
+        if (self.disconnect_flag == True):
+            logger.log(logging.ERROR, "the connection was lost.")
+            return client
+
+        self.fail_to_verify_mac = False
+        return client
+    
+    async def run2_2(self,client,topicname_list):
+
+        if (self.disconnect_flag == True):
+            logger.log(logging.ERROR, "the connection was lost.")
+            return client
+
+        self.subscribe_success = [] #initialize list in each subscribe request as 0
+
+        for topicname1 in topicname_list:
+
+   
+
+            if ('+' in topicname1 or '#' in topicname1) :
+                logger.log(logging.INFO, "1275 :"+ topicname1)
+                self.choice_state_dict[topicname1] = 2
+                self.subscribe_real_topics(client, topicname1)
+                   
+            else:
+                if (self.disconnect_flag == False):
+                    self.choice_state_dict[topicname1] = 0
+                    self.publishForChoiceToken(client,topicname1)
+
+                #print("---879 length of topicname1=",len(topicname1))
+                #print("---879 self.choice_state_dict[topicname1]=",self.choice_state_dict[topicname1])
+
+                while (self.choice_state_dict[topicname1] != 1 and self.disconnect_flag == False):
+                        time.sleep(0.1)
+                if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
+
+                    #if signVErifyFailed received do not send
+                    self.subscribe_encrypted_clientID(client, self.id_client)
+
+                #burada fialed to verify maci kontrol et. True ise tekrardan subscribe olma seçeneği gelmeli.
+                stop = False
+                while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
+                        #stop = True
+                        #logger.log(logging.ERROR, " 1295 Bad MAC message received.")
+                        time.sleep(0.1)
+                if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
+                    self.subscribe_real_topics(client, topicname1) 
 
 
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
@@ -2301,8 +2349,9 @@ class MyMQTTClass(mqtt.Client):
         if self.disconnect_flag == False:
 
             await self.receive_message_after_unsub(client)
-            logger.log(logging.INFO, "Here")
-       
+
+        while(len(self.unverified_unsuback_topics_list)<1):
+            time.sleep(0.1)
 
         if self.received_badmac_unsub == False:
             self.unsub_success = True
