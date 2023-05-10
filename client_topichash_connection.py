@@ -223,6 +223,11 @@ class MyMQTTClass(mqtt.Client):
             logger.log(logging.ERROR, "Signature of UNSUBACK is not verified.")
 
 
+
+
+            #need to take an action here
+
+
     def on_log(self, mqttc, obj, level, string):
         #print("--------on_log()----"+ string)
         msg1 = "failed to receive on socket"
@@ -370,8 +375,14 @@ class MyMQTTClass(mqtt.Client):
 
             if mac_real == signature:
                 logger.log(logging.INFO, "Signature of PUBACK is verified.")
+
             else:
-                logger.log(logging.ERROR, "Signature of PUBACK is not verified.")
+                logger.log(logging.ERROR, "Signature of PUBACK is not verified. You might want to make another publish.")
+
+
+
+                #taking an action is needed or not
+
 
 
 
@@ -1704,8 +1715,10 @@ class MyMQTTClass(mqtt.Client):
 
             if mac_real == signature:
                 logger.log(logging.INFO, "Signature of PUBACK is verified.")
+
             else:
                 logger.log(logging.ERROR, "Signature of PUBACK is not verified.")
+                
 
 
 
