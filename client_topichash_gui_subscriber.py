@@ -140,8 +140,8 @@ class TopicHashingSubscriberWindow:
 
 
 
-    def appendToList(self, mqttc:MyMQTTClass) -> bool:
-        for item in mqttc.subscribe_success:
+    def appendToList(self) -> bool:
+        for item in self.mqttc.subscribe_success:
             self.listbox.insert("end", item) 
         return True
     
@@ -160,13 +160,18 @@ class TopicHashingSubscriberWindow:
 
 
     def run_display(self):
-        rc = asyncio.run(self.mqttc.run_display_subscriber(self.client))
-        print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
+        #rc = asyncio.run(self.mqttc.run_display_subscriber(self.client))
+        #print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
         message =  ""
         self.listbox3.delete(0,"end")
-        for key,items in self.mqttc.publisher_topic_dictionary.items():
-            for item in items:
-                message = "Client ID: " + key + ", Topic Name: " + item[0] 
+        for key,item in self.mqttc.publisher_topic_dictionary.items():
+            temp_array = item[0]
+            seed_dictionary = temp_array[0]
+            logger.log(logging.ERROR, seed_dictionary)
+            hash_dictionary = temp_array[1]
+            logger.log(logging.ERROR, hash_dictionary)
+            for key2,item2 in seed_dictionary.items():
+                message = "Client ID: " + key + ", Topic Name: " + key2
                 self.listbox3.insert("end",message) 
      
         
@@ -204,6 +209,7 @@ class TopicHashingSubscriberWindow:
             topic_list.append(topic)
             
         rc = asyncio.run(self.mqttc.hash_session_real_subscribers(self.client,topic_list))
+        self.appendToList()
             
 
 
