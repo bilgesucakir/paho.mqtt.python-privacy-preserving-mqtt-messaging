@@ -189,15 +189,17 @@ class MyMQTTClass(mqtt.Client):
         logger.log(logging.INFO, "PUBLISH message sent, message id: " + str(mid))
 
     def on_subscribe(self, mqttc, obj, mid, granted_qos):
+
+
         #print("Subscribed, message id: "+str(mid)+ ", QOS: "+str(granted_qos))
         #print("Suback received, message id: "+str(mid))
         logger.log(logging.INFO, "Suback received, message id: "+ str(mid))
-        puback_packet = self.get_mac()
+        suback_packet = self.get_mac()
 
         #logger.log(logging.ERROR, "mac subscribe " + str(puback_packet))
 
-        index1 = puback_packet.index(b'::::')
-        mac_real =  puback_packet[index1+4:]
+        index1 = suback_packet.index(b'::::')
+        mac_real =  suback_packet[index1+4:]
 
         #logger.log(logging.ERROR, "mac " + str(mac_real))
 
@@ -211,8 +213,17 @@ class MyMQTTClass(mqtt.Client):
 
         if (mac_real == signature):
             logger.log(logging.INFO, "Signature of SUBACK is verified." )
+  
+
         else:
             logger.log(logging.ERROR, "Signature of SUBACK is not verified." )
+
+
+
+
+
+
+
 
 
 
@@ -239,6 +250,7 @@ class MyMQTTClass(mqtt.Client):
 
         if (mac_real == signature):
             logger.log(logging.INFO, "Signature of UNSUBACK is verified.")
+            logger.log(logging.INFO, "HERE1")
         else:
             logger.log(logging.ERROR, "Signature of UNSUBACK is not verified.")
 
@@ -835,6 +847,7 @@ class MyMQTTClass(mqtt.Client):
             #print("Authenticated encryption version of the topic:" ,topicNameEncryptedHex )
             logger.log(logging.INFO, "Authenticated encryption version of the topic:" + topicNameEncryptedHex )
 
+           
             client.subscribe(topicNameEncryptedHex, qos=qos, msgid = msgid)
             #print("Subscribed to: " ,topicNameEncryptedHex )
             logger.log(logging.INFO, "Subscribed to: " + topicNameEncryptedHex )
@@ -872,8 +885,12 @@ class MyMQTTClass(mqtt.Client):
 
             if (mac_real == signature):
                 logger.log(logging.INFO, "Signature of UNSUBACK is verified.")
+
+
+
             else:
                 logger.log(logging.ERROR, "Signature of UNSUBACK is not verified.")
+
 
 
         self.on_unsubscribe = on_unsubscribe
@@ -2156,13 +2173,13 @@ class MyMQTTClass(mqtt.Client):
         #logger.log(logging.INFO, "Topic names received from the gui:"+ topicname_list)
         for topicname1 in topicname_list:
 
+   
+
             if ('+' in topicname1 or '#' in topicname1) :
                 logger.log(logging.INFO, "1275 :"+ topicname1)
                 self.choice_state_dict[topicname1] = 2
                 self.subscribe_real_topics(client, topicname1)
-                
-
-               
+                   
 
             else:
                 if (self.disconnect_flag == False):
@@ -2186,7 +2203,9 @@ class MyMQTTClass(mqtt.Client):
                         #logger.log(logging.ERROR, " 1295 Bad MAC message received.")
                         time.sleep(0.1)
                 if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
-                    self.subscribe_real_topics(client, topicname1)
+                    self.subscribe_real_topics(client, topicname1) 
+
+
 
 
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
@@ -2272,6 +2291,44 @@ class MyMQTTClass(mqtt.Client):
 
             await self.receive_message_after_unsub(client)
             logger.log(logging.INFO, "Here")
+       
+
+        if self.received_badmac_unsub == False:
+            self.unsub_success = True
+
+        self.received_badmac_unsub = False
+        self.fail_to_verify_mac = False
+
+        return client
+    
+    async def run4_2(self, client, selected_topics_list):
+        if (self.disconnect_flag == True):
+            logger.log(logging.ERROR, "the connection was lost.")
+            return self
+
+        self.unsub_success = False
+        strconcat = ""
+        for elem in selected_topics_list:
+            strconcat += elem + ", "
+
+        strconcat = strconcat[0:len(strconcat)-2]
+
+        #unsubscribe from each topic
+        #logger.log(logging.INFO,"Topic names to unsubscribe received from the gui:"+ strconcat)
+
+        send_to_unsub_list = await self.encrypt_mac_topic_names(selected_topics_list)
+
+        if self.disconnect_flag == False and len(send_to_unsub_list) > 0:
+            client.unsubscribe(send_to_unsub_list)
+
+        if self.disconnect_flag == False:
+            bool_false = False
+            bool_true = True
+            self.subscribe4(client, bool_false, bool_true)
+
+        if self.disconnect_flag == False:
+
+            await self.receive_message_after_unsub(client)
        
 
         if self.received_badmac_unsub == False:

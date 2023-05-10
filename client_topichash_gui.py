@@ -178,6 +178,8 @@ class MyWindowMqtt:
 
         rc = asyncio.run(self.mqttc.run4(self.client, selected_topics))
 
+        
+
 
         if self.mqttc.unsub_success:
             for elem in selected_topics:

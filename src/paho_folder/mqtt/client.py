@@ -558,6 +558,7 @@ class Client(object):
         self._dontreconnect = False
         self._authenticated = False
 
+
         if protocol == MQTTv5:
             if clean_session is not None:
                 raise ValueError('Clean session is not used for MQTT 5.0')
