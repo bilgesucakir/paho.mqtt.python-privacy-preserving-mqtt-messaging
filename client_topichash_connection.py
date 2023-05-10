@@ -1856,7 +1856,7 @@ class MyMQTTClass(mqtt.Client):
 
         return client
 
-    def real_topic_hash_publish(self, client: mqtt, topicName, topicNameList, message):
+    def real_topic_hash_publish(self, client: mqtt, topicName, message):
         def on_publish(client, obj, mid):
             logger.log(logging.INFO, "Puback was received, messageID =" + str(mid))
             puback = self.get_puback()
@@ -2536,7 +2536,7 @@ class MyMQTTClass(mqtt.Client):
         self.fail_to_verify_mac = False
         return client
     
-    async def run_display_subscriber(self, client):
+    async def run_display_subscriber(self, client):                     #used by subscriber
         for key,item in self.seed_dictionary.items():
             print("key",key)
             if (self.disconnect_flag == False):
@@ -2554,19 +2554,17 @@ class MyMQTTClass(mqtt.Client):
                    
         for key,item in self.choiceTokenDictionary.items(): 
             logger.log(logging.ERROR, "Topic name: " + key + " and its choice token: " + item )
-    
+        
+        return client
 
-    async def hash_session_real_publishes(self, client, topicName, message):
+    async def hash_session_real_publishes(self, client, topicName, message):      #used by publisher
         logger.log(logging.WARNING,"Topic Name from GUI:" + topicName)
         logger.log(logging.WARNING,"Message from GUI:" + message)
-        topicNameList = []
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return client
         elif (self.disconnect_flag == False and self.MAX_COUNT +1 != self.count):
-            for key,item in self.publisher_hash_session_topics.items():
-                topicNameList.append(key)
-            self.real_topic_hash_publish(client,topicName, topicNameList, message)
+            self.real_topic_hash_publish(client,topicName, message)
         if (self.count == self.MAX_COUNT +1):
             self.publisher_hash_session_topics.clear()
             self.publisher_seed_dictionary.clear()
@@ -2574,8 +2572,29 @@ class MyMQTTClass(mqtt.Client):
             self.hash_session_end = True
             self.count = 1
             print("here 2573")
-  
+        return client
+    
+    async def hash_session_real_subscribers(self, client, topic_subscriber_list):   #used by subscriber
+        logger.log(logging.WARNING,"Topic List from GUI:")
+        logger.log(logging.WARNING, topic_subscriber_list)
+        for topic_subsrcibe in topic_subscriber_list:
+            logger.log(logging.WARNING,"topic_subsrcibe:" + topic_subsrcibe)
+            temp_list = topic_subsrcibe.split(",")
+            subscriber = temp_list[0]
+            topic = temp_list[1]
+            subscriber_id_index = subscriber.index(":")
+            subscriber_id = subscriber[subscriber_id_index+1:]
+            topic_name_index = topic.index(":")
+            topicname = topic[topic_name_index+1:]
+            logger.log(logging.WARNING,"subscriber_id:" + subscriber_id)
+            logger.log(logging.WARNING,"topicname:" + topicname)
+                
             
+        if (self.disconnect_flag == True):
+            logger.log(logging.ERROR, "the connection was lost.")
+            
+        
+        return client
 
 
 

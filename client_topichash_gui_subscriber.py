@@ -149,7 +149,13 @@ class TopicHashingSubscriberWindow:
         for item in mqttc.subscribe_success_topic_hash:
             self.listbox2.insert("end", item) 
         return True
+    
 
+    def selected_items_subscribe(self) -> list:
+        return_list = []
+        for index in self.listbox3.curselection():
+            return_list.append(str(self.listbox3.get(index)))
+        return return_list
   
 
 
@@ -192,48 +198,13 @@ class TopicHashingSubscriberWindow:
 
 
     def client_run2(self):
-        subscribed_topics = []
-
-        for i in range(self.listbox.size()):
-
-            elem = self.listbox.get(i)
-            subscribed_topics.append(str(elem))
-
-        topicname1= self.entry_21.get()
-        logger.log(logging.INFO, "Topic names received from the gui: "+ topicname1)
-        list_topicname = topicname1.split(",")
-
-        # check if the topic names in the list are correct
-        list_topicname2 = []
-        for topic1  in list_topicname :
-            topic1x = topic1.strip()    # remove leading and trailing spaces
-            if (len(topic1x) == 0 or len(topic1x) > 65535 ) :
-                logger.log(logging.ERROR,"Subcribe topic name length error, topic: " + topic1)
-            elif ('#/' in topic1x) :
-                logger.log(logging.ERROR,"Subcribe topic name wildcard error, topic: " + topic1)
-            elif topic1 in subscribed_topics:
-                logger.log(logging.ERROR,"You have already subscribed to this topic: " + topic1)
-                
-            else:
-                wordlist = topic1x.split('/')
-                if any('+' in p or '#' in p for p in wordlist if len(p) > 1) :
-                    logger.log(logging.ERROR,"Subcribe topic name wildcard error, topic: " + topic1)
-
-                else:
-                    list_topicname2.append(topic1x)
-                    logger.log(logging.WARNING,"Subcribe topic name: " + topic1x)
-
-
-        rc = asyncio.run(self.mqttc.run2(self.client,list_topicname2))
-        print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
-
-
-        bool_dummy = self.appendToList(self.mqttc)
-
-        self.entry_21.delete(0, tk.END) #delete topicname after subscription (the topic anme is alread at the subscribed topics list)
-
-
-
+        received = self.selected_items_subscribe() 
+        topic_list = []
+        for topic in received:
+            topic_list.append(topic)
+            
+        rc = asyncio.run(self.mqttc.hash_session_real_subscribers(self.client,topic_list))
+            
 
 
     def client_run4(self):
