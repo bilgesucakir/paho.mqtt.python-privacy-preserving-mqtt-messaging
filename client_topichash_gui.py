@@ -103,9 +103,10 @@ class MyWindowMqtt:
 
 
 
-    def appendToList(self, mqttc:MyMQTTClass) -> bool:
+    def appendToList(self, mqttc:MyMQTTClass, dont_add_list:list) -> bool:
         for item in mqttc.subscribe_success:
-            self.listbox.insert("end", item)
+            if item not in dont_add_list:
+                self.listbox.insert("end", item)
         return True
 
     def  client_run2(self):
@@ -142,7 +143,22 @@ class MyWindowMqtt:
 
         rc = asyncio.run(self.mqttc.run2(self.client,list_topicname2))
         print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
-        bool_dummy = self.appendToList(self.mqttc)
+
+        dummy_list = []
+        dummy_list = self.mqttc.unverified_suback_topics_list
+
+        if len(dummy_list)>0:
+            str_2 = ""
+            for elem in dummy_list:
+                str_2 += elem +  " "
+            logger.log(logging.WARNING,"FAILED SUBACK TOPICS : " + str_2)
+
+            rc2 = asyncio.run(self.mqttc.run4_2(self.client,dummy_list))
+
+
+
+
+        bool_dummy = self.appendToList(self.mqttc, dummy_list)
         self.entry_21.delete(0, tk.END) #delete topicname after subscription (the topic anme is alread at the subscribed topics list)
 
 

@@ -559,6 +559,10 @@ class Client(object):
         self._authenticated = False
 
 
+        self.suback_verified = True
+        self.unverified_suback_topics_list = []
+
+
         if protocol == MQTTv5:
             if clean_session is not None:
                 raise ValueError('Clean session is not used for MQTT 5.0')

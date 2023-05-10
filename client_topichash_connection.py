@@ -217,6 +217,7 @@ class MyMQTTClass(mqtt.Client):
 
         else:
             logger.log(logging.ERROR, "Signature of SUBACK is not verified." )
+            self.suback_verified = False
 
 
 
@@ -2171,6 +2172,11 @@ class MyMQTTClass(mqtt.Client):
 
         print("Topic names received from the gui:", topicname_list)
         #logger.log(logging.INFO, "Topic names received from the gui:"+ topicname_list)
+        
+        #modification
+        list_failed_suback = []
+
+
         for topicname1 in topicname_list:
 
    
@@ -2180,7 +2186,6 @@ class MyMQTTClass(mqtt.Client):
                 self.choice_state_dict[topicname1] = 2
                 self.subscribe_real_topics(client, topicname1)
                    
-
             else:
                 if (self.disconnect_flag == False):
                     self.choice_state_dict[topicname1] = 0
@@ -2205,7 +2210,13 @@ class MyMQTTClass(mqtt.Client):
                 if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
                     self.subscribe_real_topics(client, topicname1) 
 
+            #modification
+            if self.suback_verified == False:
+                list_failed_suback.append(topicname1)
+                self.suback_verified = True
 
+        #modification
+        self.unverified_suback_topics_list = list_failed_suback
 
 
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
