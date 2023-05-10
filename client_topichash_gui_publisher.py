@@ -28,18 +28,23 @@ class TopicHashingPublisherWindow:
     def __init__(self, base, mqttc):
         self.mqttc = mqttc
         self.client = None
+        self.label_id = None
+    
 
         self.btn11 = tk.Button(base, text="Connect",width=10, command = self.client_run1,state=NORMAL)
         self.btn11.place(x=10,y=10)
         #self.btn12 = tk.Button(base, text="Disconnect",width=10,state=DISABLED)
         #self.btn12.place(x=110,y=10)
+        self.labl_id1 = tk.Label(base, text = "", width=20,font=("bold", 10))
+        self.labl_id1.place(x=125,y=10)
+        
 
-
+      
         self.labl_31 = tk.Label(base, text="Topic Name:",width=20,font=("bold", 10))
         self.labl_31.place(x=-35,y=60)
         self.entry_31 = tk.Entry(base,state=DISABLED)
         self.entry_31.place(x=10,y=80)
-        self.btn31 = tk.Button(base, text='Add to Publishabe Topics',width=25, command = self.appendToPublishabeTopicsList, state=DISABLED)
+        self.btn31 = tk.Button(base, text='Add to Publishable Topics',width=25, command = self.appendToPublishabeTopicsList, state=DISABLED)
         self.btn31.place(x=160,y=75)
 
         self.labl_32 = tk.Label(base, text="Message to Publish:",width=20,font=("bold", 10))
@@ -130,6 +135,11 @@ class TopicHashingPublisherWindow:
 
         self.btn31['state'] = NORMAL
         self.entry_31['state'] = NORMAL
+        self.label_id = self.mqttc.id_client
+        id = "Client ID: " + self.label_id
+        self.labl_id1.config(text = id)
+       
+       
 
 
         #self.btn211['state'] = NORMAL
@@ -163,6 +173,13 @@ class TopicHashingPublisherWindow:
             return_list.append(str(self.listbox.get(index)))
 
         return return_list
+    
+    def selected_items2(self) -> list:
+        xstr = None
+
+        for index in self.listbox2.curselection():
+            xstr = str(self.listbox2.get(index))
+        return xstr
     
 
     def appendToPublishabeTopicsList(self):
@@ -226,15 +243,13 @@ class TopicHashingPublisherWindow:
 
             
     def appendToHashSessionTopicsList(self):
-        received = self.selected_items()
-        
-        
-        
+        received = self.selected_items() 
         hash_session_topics = []
         for i in range(self.listbox2.size()):
 
             elem = self.listbox2.get(i)
             hash_session_topics.append(str(elem))
+        self.btn33['state'] = DISABLED
 
 
         list_topicname2 = []
@@ -287,12 +302,10 @@ class TopicHashingPublisherWindow:
 
         self.entry_32.delete(1.0, tk.END) #delete written message in textbox after the publish
 
+ 
 
-
-
-    def  client_run3(self):
-        topicname1 = self.entry_31.get()
-        topicname1 = topicname1.strip()    # remove leading and trailing spaces
+    def client_run3(self):
+        topicname1 = self.selected_items2()
         print("TOPICNAME1",topicname1)
         message = self.entry_32.get("1.0",tk.END)
         # Search for + or # in a topic.
@@ -300,13 +313,24 @@ class TopicHashingPublisherWindow:
             logger.log(logging.ERROR,"Publish topic name should not include the + or # wildcards")
         elif len(topicname1) > 65535:
             logger.log(logging.ERROR,"Publish topic name should have length less than 65535 ")
+        elif topicname1 == None:
+            logger.log(logging.ERROR,"Topic name is none ")
         else:
             logger.log(logging.WARNING,"Publish topic name: " + topicname1)
-            rc = asyncio.run(self.mqttc.run3(self.client,topicname1, message))
+            rc = asyncio.run(self.mqttc.hash_session_real_publishes(self.client,topicname1, message))
             print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
+        if(self.mqttc.hash_session_end == True):
+            logger.log(logging.WARNING,"Hash session was ended")
+            self.btn33['state'] = NORMAL
+            self.btn32['state'] = DISABLED
+            self.listbox2.delete(0,"end")
+            self.entry_32.delete(1.0, tk.END)
+            print("here")
+        
+        
 
 
-        #logger.log(lvl, self.message.get())
+
 
         self.entry_31.delete(0, tk.END) #delete written topicname after the publish
         self.entry_32.delete(1.0, tk.END) #delete written message in textbox after the publish

@@ -40,26 +40,72 @@ class TopicHashingSubscriberWindow:
         self.btn31 = tk.Button(base, text='Submit',width=10, command = self.client_publisher,state=DISABLED)
         self.btn31.place(x=140,y=80)
 
+        self.labl_42 = tk.Label(base, text="Subscribed Publishers:",width=20,font=("bold", 10))
+        self.labl_42.place(x=330,y=20)
 
-        self.labl_21 = tk.Label(base, text="Subscribe to a Topic:",width=20,font=("bold", 10))
-        self.labl_21.place(x=-10,y=160)
-        self.entry_21 = tk.Entry(base,state=DISABLED)
-        self.entry_21.place(x=10,y=180)
+        
+        self.frame2 = tk.Frame(base)
+        self.frame2.place(x=350, y=40)
+
+        self.dummy_list2 = []
+        self.list_items2 = tk.Variable(value=self.dummy_list2)
+        self.listbox2 = tk.Listbox(
+            master=self.frame2,
+            height=5,
+            listvariable=self.list_items2,
+            selectmode=tk.MULTIPLE
+        )
+    
+        self.listbox2.pack(side=tk.LEFT, fill=tk.BOTH)
+        
+        self.scrollbar2 = tk.Scrollbar(self.frame2)
+        self.scrollbar2.pack(side = tk.LEFT, fill = tk.BOTH)
+
+        self.listbox2.config(yscrollcommand = self.scrollbar2.set)
+        self.scrollbar2.config(command = self.listbox2.yview)
+        
+
+        self.labl_21 = tk.Label(base, text="Select Topics to Subscribe:",font=("bold", 10))
+        self.labl_21.place(x=5,y=180)
+        
+        self.frame3 = tk.Frame(base)
+        self.frame3.place(x=10, y=200)
+
+        self.dummy_list3 = []
+        self.list_items3 = tk.Variable(value=self.dummy_list3)
+        self.listbox3 = tk.Listbox(
+            master=self.frame3,
+            height=10,
+            width =70,
+            listvariable=self.list_items3,
+            selectmode=tk.MULTIPLE
+        )
+        self.listbox3.pack(side=tk.LEFT, fill=tk.BOTH)
+
+        self.scrollbar3 = tk.Scrollbar(self.frame3)
+        self.scrollbar3.pack(side = tk.LEFT, fill = tk.BOTH)
+
+        self.listbox3.config(yscrollcommand = self.scrollbar3.set)
+        self.scrollbar3.config(command = self.listbox3.yview)
+        self.btn_d = tk.Button(base, text='Display',width=10, command = self.run_display,state=DISABLED)
+        self.btn_d.place(x=455,y=220)
         self.btn21 = tk.Button(base, text='Subscribe',width=10, command = self.client_run2,state=DISABLED)
-        self.btn21.place(x=140,y=175)
+        self.btn21.place(x=455,y=260)
 
+        
         self.labl_22 = tk.Label(base, text="Subscribed Topics:",width=20,font=("bold", 10))
-        self.labl_22.place(x=260,y=110)
+        self.labl_22.place(x=5,y=390)
 
         #bilgesu modification
         self.frame = tk.Frame(base)
-        self.frame.place(x=275, y=140)
+        self.frame.place(x=10, y=410)
 
         self.dummy_list = []
         self.list_items = tk.Variable(value=self.dummy_list)
         self.listbox = tk.Listbox(
             master=self.frame,
             height=10,
+            width = 70,
             listvariable=self.list_items,
             selectmode=tk.MULTIPLE
         )
@@ -73,30 +119,9 @@ class TopicHashingSubscriberWindow:
         #bilgesu modification
 
         self.btn211 = tk.Button(base, text='Unsubscribe',width=10, command = self.client_run4, state=DISABLED)
-        self.btn211.place(x=425, y=140)
-
-        self.labl_42 = tk.Label(base, text="Subscribed Publishers:",width=20,font=("bold", 10))
-        self.labl_42.place(x=-10,y=240)
-
-        #bilgesu modification
-        self.frame2 = tk.Frame(base)
-        self.frame2.place(x=10, y=270)
-
-        self.dummy_list2 = []
-        self.list_items2 = tk.Variable(value=self.dummy_list2)
-        self.listbox2 = tk.Listbox(
-            master=self.frame2,
-            height=10,
-            listvariable=self.list_items2,
-            selectmode=tk.MULTIPLE
-        )
-        self.listbox2.pack(side=tk.LEFT, fill=tk.BOTH)
-
-        self.scrollbar2 = tk.Scrollbar(self.frame2)
-        self.scrollbar2.pack(side = tk.LEFT, fill = tk.BOTH)
-
-        self.listbox2.config(yscrollcommand = self.scrollbar.set)
-        self.scrollbar2.config(command = self.listbox2.yview)
+        self.btn211.place(x=455, y=430)
+        
+        
 
         
 
@@ -108,9 +133,10 @@ class TopicHashingSubscriberWindow:
         print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
         self.client = client
         self.btn21['state'] = NORMAL
-        self.entry_21['state'] = NORMAL
         self.btn31['state'] = NORMAL
         self.entry_31['state'] = NORMAL
+        self.btn211['state'] = NORMAL
+        self.btn_d['state'] = NORMAL
 
 
 
@@ -123,6 +149,30 @@ class TopicHashingSubscriberWindow:
         for item in mqttc.subscribe_success_topic_hash:
             self.listbox2.insert("end", item) 
         return True
+    
+
+    def selected_items_subscribe(self) -> list:
+        return_list = []
+        for index in self.listbox3.curselection():
+            return_list.append(str(self.listbox3.get(index)))
+        return return_list
+  
+
+
+    def run_display(self):
+        rc = asyncio.run(self.mqttc.run_display_subscriber(self.client))
+        print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
+        message =  ""
+        self.listbox3.delete(0,"end")
+        for key,items in self.mqttc.publisher_topic_dictionary.items():
+            for item in items:
+                message = "Client ID: " + key + ", Topic Name: " + item[0] 
+                self.listbox3.insert("end",message) 
+     
+        
+   
+
+        
     
     def client_publisher(self):
         publishers = []
@@ -148,48 +198,13 @@ class TopicHashingSubscriberWindow:
 
 
     def client_run2(self):
-        subscribed_topics = []
-
-        for i in range(self.listbox.size()):
-
-            elem = self.listbox.get(i)
-            subscribed_topics.append(str(elem))
-
-        topicname1= self.entry_21.get()
-        logger.log(logging.INFO, "Topic names received from the gui: "+ topicname1)
-        list_topicname = topicname1.split(",")
-
-        # check if the topic names in the list are correct
-        list_topicname2 = []
-        for topic1  in list_topicname :
-            topic1x = topic1.strip()    # remove leading and trailing spaces
-            if (len(topic1x) == 0 or len(topic1x) > 65535 ) :
-                logger.log(logging.ERROR,"Subcribe topic name length error, topic: " + topic1)
-            elif ('#/' in topic1x) :
-                logger.log(logging.ERROR,"Subcribe topic name wildcard error, topic: " + topic1)
-            elif topic1 in subscribed_topics:
-                logger.log(logging.ERROR,"You have already subscribed to this topic: " + topic1)
-                
-            else:
-                wordlist = topic1x.split('/')
-                if any('+' in p or '#' in p for p in wordlist if len(p) > 1) :
-                    logger.log(logging.ERROR,"Subcribe topic name wildcard error, topic: " + topic1)
-
-                else:
-                    list_topicname2.append(topic1x)
-                    logger.log(logging.WARNING,"Subcribe topic name: " + topic1x)
-
-
-        rc = asyncio.run(self.mqttc.run2(self.client,list_topicname2))
-        print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
-
-
-        bool_dummy = self.appendToList(self.mqttc)
-
-        self.entry_21.delete(0, tk.END) #delete topicname after subscription (the topic anme is alread at the subscribed topics list)
-
-
-
+        received = self.selected_items_subscribe() 
+        topic_list = []
+        for topic in received:
+            topic_list.append(topic)
+            
+        rc = asyncio.run(self.mqttc.hash_session_real_subscribers(self.client,topic_list))
+            
 
 
     def client_run4(self):
