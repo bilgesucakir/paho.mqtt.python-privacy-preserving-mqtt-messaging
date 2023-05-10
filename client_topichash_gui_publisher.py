@@ -305,6 +305,7 @@ class TopicHashingPublisherWindow:
  
 
     def client_run3(self):
+        
         topicname1 = self.selected_items2()
         print("TOPICNAME1",topicname1)
         message = self.entry_32.get("1.0",tk.END)
@@ -326,6 +327,7 @@ class TopicHashingPublisherWindow:
             self.listbox2.delete(0,"end")
             self.entry_32.delete(1.0, tk.END)
             print("here")
+        
         
         
 
