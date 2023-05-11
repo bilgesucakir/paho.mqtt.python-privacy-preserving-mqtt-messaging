@@ -558,9 +558,13 @@ class Client(object):
         self._dontreconnect = False
         self._authenticated = False
 
-
+        #bilgesu:modificaiton
         self.suback_verified = True
         self.unverified_suback_topics_list = []
+
+        self.unsuback_verified = True
+        self.unverified_unsuback_topics_list = []
+        #bilgesu:modificaiton end
 
 
         if protocol == MQTTv5:
