@@ -165,10 +165,9 @@ class TopicHashingSubscriberWindow:
         message =  ""
         self.listbox3.delete(0,"end")
         for key,item in self.mqttc.publisher_topic_dictionary.items():
-            temp_array = item[0]
-            seed_dictionary = temp_array[0]
+            seed_dictionary = item[0]
             logger.log(logging.ERROR, seed_dictionary)
-            hash_dictionary = temp_array[1]
+            hash_dictionary = item[1]
             logger.log(logging.ERROR, hash_dictionary)
             for key2,item2 in seed_dictionary.items():
                 message = "Client ID: " + key + ", Topic Name: " + key2

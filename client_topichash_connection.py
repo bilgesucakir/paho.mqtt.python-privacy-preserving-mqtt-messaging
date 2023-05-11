@@ -102,6 +102,7 @@ class MyMQTTClass(mqtt.Client):
 
         self.MAX_COUNT = 5
         self.count = 0
+        self.count_dictionary = {}               #used by subscriber
         self.publisher_hash_session_topics = {}   #used by publisher
         self.hash_session_end = False            #used by publisher
 
@@ -1677,21 +1678,28 @@ class MyMQTTClass(mqtt.Client):
                         polynomial = bytes.decode(polynomial, 'utf-8')
                         logger.log(logging.INFO, "polynomial " + polynomial)
                         poly_list = polynomial.split(",")
-                        self.count +=1
-                        salt_poly = self.polynomial_func(self.count,int(poly_list[0]),int(poly_list[1]),int(poly_list[2]),int(poly_list[3]))
-                        salt_poly = str(salt_poly)
-                        logger.log(logging.WARNING, "salt_poly: " + salt_poly + " and its count: " + str(self.count))
+                        #self.count +=1
+                        
+                        #salt_poly = self.polynomial_func(self.count,int(poly_list[0]),int(poly_list[1]),int(poly_list[2]),int(poly_list[3]))
+                        #salt_poly = str(salt_poly)
+                        #logger.log(logging.WARNING, "salt_poly: " + salt_poly + " and its count: " + str(self.count))
                         self.poly_publishID_dictionary[publisher_id] = poly_list
                         
                         topic_list = topic_list.split(b'::::')
                         self.publisher_topic_dictionary[publisher_id] = []
                         for topic_seed_pair in topic_list:
+
                             index = topic_seed_pair.index(b'$$$$')
                             topicName = topic_seed_pair[0:index]
                             seed = topic_seed_pair[index+4:]
                             topic_name_str = force_str(topicName)
                             seed_str = force_str(seed)
                             self.seed_dictionary[topic_name_str] = seed_str
+                            self.count_dictionary[topic_name_str] = 0
+                            self.count_dictionary[topic_name_str] += 1
+                            salt_poly = self.polynomial_func(self.count_dictionary[topic_name_str],int(poly_list[0]),int(poly_list[1]),int(poly_list[2]),int(poly_list[3]))
+                            salt_poly = str(salt_poly)
+                            logger.log(logging.WARNING, "salt_poly: " + salt_poly + " and its count: " + str(self.count_dictionary[topic_name_str]) + " and it topic name:" + topic_name_str )
                             
                             dk = hashlib.pbkdf2_hmac('sha512', seed_str.encode(), salt_poly.encode(), 100000)
                             dk2 = dk.hex()
@@ -1701,7 +1709,8 @@ class MyMQTTClass(mqtt.Client):
                             self.topic_subscribe_boolean[topic_name_str] = False
                             logger.log(logging.WARNING, "Topic names: " + topic_name_str + ", and its first hash value: " + dk2 )
                 
-                        self.publisher_topic_dictionary[publisher_id].append([self.seed_dictionary, self.topic_hash_dictionary, self.hash_topic_dictionary, self.topic_subscribe_boolean ])
+                        self.publisher_topic_dictionary[publisher_id] = [self.seed_dictionary, self.topic_hash_dictionary, self.hash_topic_dictionary, self.topic_subscribe_boolean ]
+                    
 
                         for keys,values in self.publisher_topic_dictionary.items():
                             logger.log(logging.INFO, "Seed dictionary " + keys )
@@ -2073,31 +2082,35 @@ class MyMQTTClass(mqtt.Client):
         
 
             topic_byte = unhexlify(topic_hex)
-
+            print(2084)
             backend = default_backend()
             decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
             decrypted_data = decryptor.update(topic_byte)
             unpadded = padder.update(decrypted_data) + padder.finalize()
-
+            print(2090)
             index1 = unpadded.index(b'::::')
             topic_name = unpadded[0:index1]
             mac_of_topic_name = unpadded[index1+4:]
 
             topic_name_str = bytes.decode(topic_name)
 
-          
+            print(2097)
             xbool = False
             id_publisher = ""
             for key,item in self.publisher_topic_dictionary.items():
-                temp_array = item[0]
-                seed_dictionary = temp_array[0]
-                logger.log(logging.ERROR, seed_dictionary)
-                topic_hash_dictionary = temp_array[1]
-                logger.log(logging.ERROR, topic_hash_dictionary)
-                hash_topic_dictionary = temp_array[2]
+            
+                #logger.log(logging.ERROR, self.publisher_topic_dictionary)
+                seed_dictionary = item[0]
+                print(2109)
+                #logger.log(logging.ERROR, seed_dictionary)
+                topic_hash_dictionary = item[1]
+                #logger.log(logging.ERROR, topic_hash_dictionary)
+                hash_topic_dictionary = item[2]
+                print(2109)
                 topic_real = hash_topic_dictionary.get(topic_name_str, "")
                 if(topic_real != ""):
+                    print(2112)
                     xbool = True
                     id_publisher = key
                     
@@ -2144,7 +2157,66 @@ class MyMQTTClass(mqtt.Client):
 
                 choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
                 #print("Choicetoken key: ", choicetoken_key)
+
+                  
+
                 
+                polynomials = self.poly_publishID_dictionary[publisher_id]
+                
+                logger.log(logging.WARNING, "counter value: " + str(self.count_dictionary[topic_real])  + " and its topic name:" + topic_real )
+                salt_poly = self.polynomial_func(self.count_dictionary[topic_real],int(polynomials[0]),int(polynomials[1]),int(polynomials[2]),int(polynomials[3]))
+                salt_poly = str(salt_poly)
+                logger.log(logging.WARNING, "salt_poly: " + salt_poly + ", and counter value: " + str(self.count_dictionary[topic_real])  + " and its topic name:" + topic_real )
+                item = self.publisher_topic_dictionary[id_publisher]
+                
+                seed_dictionary = item[0]
+                #logger.log(logging.ERROR, seed_dictionary)
+                topic_hash_dictionary = item[1]
+                #logger.log(logging.ERROR, topic_hash_dictionary)
+                hash_topic_dictionary = item[2]
+                topic_boolean_dict = item[3]
+                seed_dictionary[topic_real] = topic_name_str
+                dk = hashlib.pbkdf2_hmac('sha512', topic_name_str.encode(), salt_poly.encode(), 100000)
+                del hash_topic_dictionary[topic_name_str]
+                hash_topic_dictionary[dk.hex()] = topic_real
+                topic_hash_dictionary[topic_real] = dk.hex()
+                self.count_dictionary[topic_real] +=1
+                logger.log(logging.WARNING, "Real topic name: " + topic_real + ", and its previous hash: " + topic_name_str  + " and its current hash:" + dk.hex())
+                
+                self.publisher_topic_dictionary[publisher_id] = [seed_dictionary,topic_hash_dictionary,hash_topic_dictionary,topic_boolean_dict]
+                topicName_byte = force_bytes(dk.hex())
+            
+            
+                msgid = self._mid_generate()
+                print("before msgid sub", msgid)
+                qos = 1
+
+                topicname_str = hash + str(qos) + str(msgid)
+                hash_bytes = force_bytes(topicname_str)
+
+                h = hmac.HMAC(self.session_key, hashes.SHA256())
+                h.update(hash_bytes)
+                signature = h.finalize()
+                #print("MAC of the topic: ", signature )
+                logger.log(logging.INFO, b'MAC of the topic: '+ signature )
+
+
+                topicName_subscribe = topicName_byte + b'::::' + signature
+
+                backend = default_backend()
+                encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+                padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+                padded_data = padder.update(topicName_subscribe) + padder.finalize()
+                topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
+                topicNameEncryptedHex = topicNameEncryptedByte.hex()
+                #print("Authenticated encryption version of the topic:" ,topicNameEncryptedHex )
+                logger.log(logging.INFO, "Authenticated encryption version of the topic:" + topicNameEncryptedHex )
+
+            
+                client.subscribe(topicNameEncryptedHex, qos=qos, msgid = msgid)
+                #print("Subscribed to: " ,topicNameEncryptedHex )
+                logger.log(logging.INFO, "Subscribed to: " + topicNameEncryptedHex )
+                    
                 try:
                     decryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).decryptor()
                     padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).unpadder()
@@ -2156,7 +2228,7 @@ class MyMQTTClass(mqtt.Client):
                 except:
                     logger.log(logging.ERROR, "CHOICE TOKEN KEY IS WRONG")
                     return client
-                
+                """
                 self.polynomials = []
                 salt_poly = self.polynomial_func(self.count,self.polynomials[0],self.polynomials[1],self.polynomials[2],self.polynomials[3])
                 salt_poly = str(salt_poly)
@@ -2183,7 +2255,7 @@ class MyMQTTClass(mqtt.Client):
 
                 self.publisher_topic_dictionary[key] = [seed_dictionary,topic_hash_dictionary,hash_topic_dictionary,topic_boolean_dict]
  
-                  
+                  """
                     
 
                 if msg.retain == 0:
@@ -2223,8 +2295,8 @@ class MyMQTTClass(mqtt.Client):
             logger.log(logging.INFO, "----Function to subscribe to topic: "+ topicname )
             
     
-            hash_and_seed_list_of_list = self.publisher_topic_dictionary[publisher_id]
-            hash_and_seed_list = hash_and_seed_list_of_list[0] 
+            hash_and_seed_list = self.publisher_topic_dictionary[publisher_id]
+            
             seed_dictionary = hash_and_seed_list[0]
             topic_hash_dictionary = hash_and_seed_list[1]
             hash_topic_dictionary = hash_and_seed_list[2]
@@ -2926,8 +2998,9 @@ class MyMQTTClass(mqtt.Client):
             topicname = topic[topic_name_index+2:]
             logger.log(logging.WARNING,"publisher_id:" + publisher_id)
             logger.log(logging.WARNING,"topicname:" + topicname)
-            hash_and_seed_list_of_list = self.publisher_topic_dictionary[publisher_id]
-            hash_and_seed_list = hash_and_seed_list_of_list[0] 
+            hash_and_seed_list = self.publisher_topic_dictionary[publisher_id]
+            logger.log(logging.WARNING, hash_and_seed_list[0])
+            
             seed_dictionary = hash_and_seed_list[0]
             topic_hash_dictionary = hash_and_seed_list[1]
             topic_subscribe_bool = hash_and_seed_list[3]
@@ -2940,6 +3013,8 @@ class MyMQTTClass(mqtt.Client):
             logger.log(logging.WARNING,self.choice_state_dict)
 
             if (self.choice_state_dict[topicname] == 2 and self.disconnect_flag == False):
+                self.real_topic_hash_subscribe(client,topicname, publisher_id)
+            else:
                 self.real_topic_hash_subscribe(client,topicname, publisher_id)
 
             
