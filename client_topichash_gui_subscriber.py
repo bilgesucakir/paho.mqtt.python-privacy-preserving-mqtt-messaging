@@ -160,6 +160,11 @@ class TopicHashingSubscriberWindow:
 
 
     def run_display(self):
+        if self.mqttc.topic_hashing_clear == True:
+            self.listbox.delete(0,"end")
+            self.listbox3.delete(0,"end")
+            self.mqttc.topic_hashing_clear = False
+     
         #rc = asyncio.run(self.mqttc.run_display_subscriber(self.client))
         #print(" rc = asyncio.run(mqttc.run2(mqttc,topicname)) , rc :",rc)
         message =  ""
@@ -172,7 +177,8 @@ class TopicHashingSubscriberWindow:
             for key2,item2 in seed_dictionary.items():
                 message = "Client ID: " + key + ", Topic Name: " + key2
                 self.listbox3.insert("end",message) 
-     
+      
+      
         
    
 
@@ -209,6 +215,10 @@ class TopicHashingSubscriberWindow:
             
         rc = asyncio.run(self.mqttc.hash_session_real_subscribers(self.client,topic_list))
         self.appendToList()
+        if self.mqttc.topic_hashing_clear == True:
+            self.listbox.delete(0,"end")
+            self.listbox3.delete(0,"end")
+
             
 
 
