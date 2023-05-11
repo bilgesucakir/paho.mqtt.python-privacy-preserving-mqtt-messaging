@@ -236,7 +236,7 @@ class MyMQTTClass(mqtt.Client):
 
 
 
-    def on_unsubscribe(self, obj, mid):
+    def on_unsubscribe(self, mqttc, obj, mid):
 
         packet_bytes = self.get_packet_bytes()
 
@@ -1315,6 +1315,31 @@ class MyMQTTClass(mqtt.Client):
 
 
         return client
+    
+
+    def encrypt_mac_one_topic_name(self, topic):
+
+        topic_name = topic
+        qos = str(1) #kontrol et
+        to_be_hashed = bytes(topic, 'utf-8') + b'::::' + bytes(qos, 'utf-8')
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(to_be_hashed)
+        hash_to_append = h.finalize()
+
+        to_be_encrypted = bytes(topic_name, 'utf-8') + b'::::' + hash_to_append
+        #to_be_encrypted = to_be_encrypted + b'broke it' #wrong mac on purpose
+
+        backend = default_backend()
+        encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+        padded_data = padder.update(to_be_encrypted) + padder.finalize()
+        encrypted = encryptor.update(padded_data) + encryptor.finalize()
+        encrypted_hex = encrypted.hex()
+
+        #enrypted_hex: ae(ks, topic||mac(ks, topic||qos)) format
+    
+        return encrypted_hex
+    
   
 
 
@@ -2107,6 +2132,7 @@ class MyMQTTClass(mqtt.Client):
                 self.topic_hash_dictionary = {} 
                 self.hash_topic_dictionary = {}
                 self.topic_subscribe_boolean = {}
+                self.subscribe_success = []
                 
                 
                 self.choice_state_dict[topic_name_str] == 0
@@ -2322,9 +2348,14 @@ class MyMQTTClass(mqtt.Client):
                     client.subscribe(topicNameEncryptedHex, qos=qos, msgid = msgid)
                     #print("Subscribed to: " ,topicNameEncryptedHex )
                     logger.log(logging.INFO, "Subscribed to: " + topicNameEncryptedHex )
+                    send_to_unsub= self.encrypt_mac_one_topic_name(topic_name_str)
+                    client.unsubscribe(send_to_unsub)
+                    
+
 
 
                     #bir önceki hash versionu için unsubscribe ekle 
+
                         
                     try:
                         decryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).decryptor()
