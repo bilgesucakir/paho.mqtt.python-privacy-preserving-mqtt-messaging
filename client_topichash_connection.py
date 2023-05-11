@@ -2187,7 +2187,7 @@ class MyMQTTClass(mqtt.Client):
                 print("before msgid sub", msgid)
                 qos = 1
 
-                topicname_str = hash + str(qos) + str(msgid)
+                topicname_str = dk.hex() + str(qos) + str(msgid)
                 hash_bytes = force_bytes(topicname_str)
 
                 h = hmac.HMAC(self.session_key, hashes.SHA256())
@@ -3063,8 +3063,15 @@ class MyMQTTClass(mqtt.Client):
 
             if (self.choice_state_dict[topicname] == 2 and self.disconnect_flag == False):
                 self.real_topic_hash_subscribe(client,topicname, publisher_id)
-            else:
+            while (self.choice_state_dict[topicname] != 3 and self.disconnect_flag == False and stop == False):
+                    time.sleep(0.1)
+
+            if (self.choice_state_dict[topicname] == 3 and self.disconnect_flag == False):
                 self.real_topic_hash_subscribe(client,topicname, publisher_id)
+            
+            if (self.disconnect_flag == False and self.count_dictionary[topicname] == self.MAX_COUNT +1 ) :
+                self.subscribe_to_topicHashing_publisher(client, topicname, publisher_id)
+
 
             
 
