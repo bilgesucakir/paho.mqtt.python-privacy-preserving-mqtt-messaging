@@ -82,8 +82,8 @@ class MyMQTTClass(mqtt.Client):
 
         self.subscribe_success:list = [] 
         self.publish_success:list = [] 
-        self.publish_topic_hash_publisher:list = [] 
-        self.subscribe_success_topic_hash = {}
+       
+        self.subscribe_success_topic_hash = 0
         self.publish_success_topic_hash:list = [] 
 
 
@@ -94,7 +94,7 @@ class MyMQTTClass(mqtt.Client):
         self.topicname_hash_dictionary = {}              #used by publishers
         self.publisher_seed_dictionary = {}        #used by publishers
         self.publisher_topic_dictionary = {}       #used by subscribers
-        self.poly_publishID_dictionary= {}         #used by subscribers
+        self.poly_list  = []                     #used by subscribers
         self.polynomials:list = []                 #used by publishers
         self.topic_subscribe_boolean = {}          #used by subscribers
 
@@ -105,6 +105,7 @@ class MyMQTTClass(mqtt.Client):
         self.count_dictionary = {}               #used by subscriber
         self.publisher_hash_session_topics = {}   #used by publisher
         self.hash_session_end = False            #used by publisher
+        self.topic_hashing_clear = False         #used by subscriber
 
 
 
@@ -235,7 +236,7 @@ class MyMQTTClass(mqtt.Client):
 
 
 
-    def on_unsubscribe(self, obj, mid):
+    def on_unsubscribe(self, mqttc, obj, mid):
 
         packet_bytes = self.get_packet_bytes()
 
@@ -1314,6 +1315,31 @@ class MyMQTTClass(mqtt.Client):
 
 
         return client
+    
+
+    def encrypt_mac_one_topic_name(self, topic):
+
+        topic_name = topic
+        qos = str(1) #kontrol et
+        to_be_hashed = bytes(topic, 'utf-8') + b'::::' + bytes(qos, 'utf-8')
+        h = hmac.HMAC(self.session_key, hashes.SHA256())
+        h.update(to_be_hashed)
+        hash_to_append = h.finalize()
+
+        to_be_encrypted = bytes(topic_name, 'utf-8') + b'::::' + hash_to_append
+        #to_be_encrypted = to_be_encrypted + b'broke it' #wrong mac on purpose
+
+        backend = default_backend()
+        encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+        padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+        padded_data = padder.update(to_be_encrypted) + padder.finalize()
+        encrypted = encryptor.update(padded_data) + encryptor.finalize()
+        encrypted_hex = encrypted.hex()
+
+        #enrypted_hex: ae(ks, topic||mac(ks, topic||qos)) format
+    
+        return encrypted_hex
+    
   
 
 
@@ -1485,7 +1511,7 @@ class MyMQTTClass(mqtt.Client):
         return client
     
 
-    def publish_to_topichashing_clientID(self, client: mqtt, topicName, publisher_id):    #used by subscriber
+    def publish_to_topichashing_clientID(self, client: mqtt, topicName):    #used by subscriber
            
         def on_publish(client, obj, mid):
             #print("Puback was received, messageID =",str(mid))
@@ -1578,12 +1604,12 @@ class MyMQTTClass(mqtt.Client):
         logger.log(logging.INFO, b'Message after authenticated encyption with the session key: '+ encrypted_message2)
 
         client.publish(encrypted_topic_hex, encrypted_message2 , qos = qos, retain = retainFlag, msgid=msgid)
-        self.subscribe_success_topic_hash[str(publisher_id)] = 1
+        self.subscribe_success_topic_hash = 1
 
 
         return client
     
-    def subscribe_to_topicHashing_publisher(self, client: mqtt, topicname, publisher_id):
+    def subscribe_to_topicHashing_publisher(self, client: mqtt, topicname):
         def on_message(client, userdata, msg):
             #print("----Publish message was received from broker")
             logger.log(logging.INFO, "---- 1536 Publish message was received from broker")
@@ -1599,7 +1625,15 @@ class MyMQTTClass(mqtt.Client):
             decrypted_data = decryptor.update(topic_byte)
             unpadded = padder.update(decrypted_data) + padder.finalize()
             logger.log(logging.INFO, b'Decrypted payload: ' + unpadded)
-            if(self.subscribe_success_topic_hash[str(publisher_id)]  == 2):
+            if(self.subscribe_success_topic_hash == 2):
+                self.topic_hashing_clear = True
+
+                #initialize the dictionaries
+                self.seed_dictionary = {}
+                self.count_dictionary = {}
+                self.topic_hash_dictionary = {} 
+                self.hash_topic_dictionary = {}
+                self.topic_subscribe_boolean = {}
 
                 index1 = unpadded.index(b'::::')
                 topic_name = unpadded[0:index1]
@@ -1679,10 +1713,11 @@ class MyMQTTClass(mqtt.Client):
                         #salt_poly = self.polynomial_func(self.count,int(poly_list[0]),int(poly_list[1]),int(poly_list[2]),int(poly_list[3]))
                         #salt_poly = str(salt_poly)
                         #logger.log(logging.WARNING, "salt_poly: " + salt_poly + " and its count: " + str(self.count))
-                        self.poly_publishID_dictionary[publisher_id] = poly_list
+                        self.poly_list = poly_list
                         
                         topic_list = topic_list.split(b'::::')
-                        self.publisher_topic_dictionary[publisher_id] = []
+                        
+                        
                         for topic_seed_pair in topic_list:
 
                             index = topic_seed_pair.index(b'$$$$')
@@ -1705,7 +1740,7 @@ class MyMQTTClass(mqtt.Client):
                             self.topic_subscribe_boolean[topic_name_str] = False
                             logger.log(logging.WARNING, "Topic names: " + topic_name_str + ", and its first hash value: " + dk2 )
                 
-                        self.publisher_topic_dictionary[publisher_id] = [self.seed_dictionary, self.topic_hash_dictionary, self.hash_topic_dictionary, self.topic_subscribe_boolean ]
+                        
                     
 
                         for keys,values in self.publisher_topic_dictionary.items():
@@ -1730,7 +1765,7 @@ class MyMQTTClass(mqtt.Client):
 
  
         client.on_message = on_message
-        if(self.subscribe_success_topic_hash[str(publisher_id)] == 1):
+        if(self.subscribe_success_topic_hash == 1):
 
             #print("----Function to subscribe to topic: ", topicname )
             logger.log(logging.INFO, "----Function to subscribe to topic: "+ topicname )
@@ -1763,7 +1798,7 @@ class MyMQTTClass(mqtt.Client):
             client.subscribe(topicNameEncryptedHex, qos=qos, msgid = msgid)
             #print("Subscribed to: " ,topicNameEncryptedHex )
             logger.log(logging.INFO, "Subscribed to: " + topicNameEncryptedHex )
-            self.subscribe_success_topic_hash[str(publisher_id)] = 2
+            self.subscribe_success_topic_hash = 2
 
         
 
@@ -1806,7 +1841,7 @@ class MyMQTTClass(mqtt.Client):
         #print("----Function to publish to topic: ", topicName )
         #print("Message to be published: ", message)
 
-        topicName = "topicHashing/" + str(self.id_client)
+        topicName = "topicHashing" 
 
         message = ""
         
@@ -2064,7 +2099,7 @@ class MyMQTTClass(mqtt.Client):
         return client
     
 
-    def real_topic_hash_subscribe(self, client: mqtt, topicname, publisher_id):
+    def real_topic_hash_subscribe(self, client: mqtt, topicname):
         def on_message(client, userdata, msg):
            
             logger.log(logging.INFO, "--- 2060 -Publish message was received from broker")
@@ -2090,214 +2125,290 @@ class MyMQTTClass(mqtt.Client):
             mac_of_topic_name = unpadded[index1+4:]
 
             topic_name_str = bytes.decode(topic_name)
-
-            print(2097)
-            xbool = False
-            id_publisher = ""
-            for key,item in self.publisher_topic_dictionary.items():
-            
-                #logger.log(logging.ERROR, self.publisher_topic_dictionary)
-                seed_dictionary = item[0]
-                print(2109)
-                #logger.log(logging.ERROR, seed_dictionary)
-                topic_hash_dictionary = item[1]
-                #logger.log(logging.ERROR, topic_hash_dictionary)
-                hash_topic_dictionary = item[2]
-                print(2109)
-                topic_real = hash_topic_dictionary.get(topic_name_str, "")
-                if(topic_real != ""):
-                    print(2112)
-                    xbool = True
-                    id_publisher = key
-                    
-            
-            logger.log(logging.WARNING,"topic_real" + topic_real)
-            logger.log(logging.WARNING,"topic_hash" + topic_name_str)
-            logger.log(logging.WARNING,"id_publisher" + id_publisher)
-
-            if (xbool == False):
-                    logger.log(logging.ERROR,"There is no topic name for this hash")
-                    return client
-            
-
-
-            choiceTokenhex = self.choiceTokenDictionary[topic_real]
-
-            choiceToken = unhexlify(choiceTokenhex)
-
-            logger.log(logging.INFO, b'Decrypted topic name: ' + topic_name + b' and its mac: ' + mac_of_topic_name)
-            logger.log(logging.INFO, "Choice token of the topic: "+ choiceTokenhex )
-
-            h = hmac.HMAC(self.session_key, hashes.SHA256())
-            h.update(topic_name)
-            signature = h.finalize()
-
-            if(signature == mac_of_topic_name):
-                #print("The content of the topic name is not changed. Mac of the topic name is correct")
-                logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct")
-
-                data = msg.payload
-                data_len = data[0:2]
-                actual_data = data[2:]
-
-                decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
-                padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
-                decrypted_data = decryptor.update(actual_data)
-                unpadded = padder.update(decrypted_data) + padder.finalize()
-                index1 = unpadded.index(b'::::')
-
-                message_encrypted_with_ct = unpadded[0:index1]
-                mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
-                #print("Message after decryption with session key: ", message_encrypted_with_ct)
-                logger.log(logging.INFO, b'Message after decryption with session key: '+ message_encrypted_with_ct)
-
-                choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
-                #print("Choicetoken key: ", choicetoken_key)
-
-                  
-
+            if "topicHashing" in topic_name_str: 
+                self.topic_hashing_clear = True
+                self.seed_dictionary = {}
+                self.count_dictionary = {}
+                self.topic_hash_dictionary = {} 
+                self.hash_topic_dictionary = {}
+                self.topic_subscribe_boolean = {}
+                self.subscribe_success = []
                 
-                polynomials = self.poly_publishID_dictionary[publisher_id]
                 
-                logger.log(logging.WARNING, "counter value: " + str(self.count_dictionary[topic_real])  + " and its topic name:" + topic_real )
-                salt_poly = self.polynomial_func(self.count_dictionary[topic_real],int(polynomials[0]),int(polynomials[1]),int(polynomials[2]),int(polynomials[3]))
-                salt_poly = str(salt_poly)
-                logger.log(logging.WARNING, "salt_poly: " + salt_poly + ", and counter value: " + str(self.count_dictionary[topic_real])  + " and its topic name:" + topic_real )
-                item = self.publisher_topic_dictionary[id_publisher]
-                
-                seed_dictionary = item[0]
-                #logger.log(logging.ERROR, seed_dictionary)
-                topic_hash_dictionary = item[1]
-                #logger.log(logging.ERROR, topic_hash_dictionary)
-                hash_topic_dictionary = item[2]
-                topic_boolean_dict = item[3]
-                seed_dictionary[topic_real] = topic_name_str
-                dk = hashlib.pbkdf2_hmac('sha512', topic_name_str.encode(), salt_poly.encode(), 100000)
-                del hash_topic_dictionary[topic_name_str]
-                hash_topic_dictionary[dk.hex()] = topic_real
-                topic_hash_dictionary[topic_real] = dk.hex()
-                self.count_dictionary[topic_real] +=1
-                logger.log(logging.WARNING, "Real topic name: " + topic_real + ", and its previous hash: " + topic_name_str  + " and its current hash:" + dk.hex())
-                
-                self.publisher_topic_dictionary[publisher_id] = [seed_dictionary,topic_hash_dictionary,hash_topic_dictionary,topic_boolean_dict]
-                topicName_byte = force_bytes(dk.hex())
-            
-            
-                msgid = self._mid_generate()
-                print("before msgid sub", msgid)
-                qos = 1
-
-                topicname_str = dk.hex() + str(qos) + str(msgid)
-                hash_bytes = force_bytes(topicname_str)
+                self.choice_state_dict[topic_name_str] == 0
+                topic_name_str = bytes.decode(topic_name)
+                choiceTokenhex = self.choiceTokenDictionary[topic_name_str]
+                choiceToken = unhexlify(choiceTokenhex)
+               
+                logger.log(logging.INFO, b'Decrypted topic name: ' + topic_name + b' and its mac: ' + mac_of_topic_name)
+                logger.log(logging.INFO, "Choice token of the topic: "+ choiceTokenhex )
 
                 h = hmac.HMAC(self.session_key, hashes.SHA256())
-                h.update(hash_bytes)
+                h.update(topic_name)
                 signature = h.finalize()
-                #print("MAC of the topic: ", signature )
-                logger.log(logging.INFO, b'MAC of the topic: '+ signature )
 
+                if(signature == mac_of_topic_name):
+                    #print("The content of the topic name is not changed. Mac of the topic name is correct")
+                    logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct")
 
-                topicName_subscribe = topicName_byte + b'::::' + signature
+                    data = msg.payload
+                    data_len = data[0:2]
+                    actual_data = data[2:]
 
-                backend = default_backend()
-                encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
-                padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
-                padded_data = padder.update(topicName_subscribe) + padder.finalize()
-                topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
-                topicNameEncryptedHex = topicNameEncryptedByte.hex()
-                #print("Authenticated encryption version of the topic:" ,topicNameEncryptedHex )
-                logger.log(logging.INFO, "Authenticated encryption version of the topic:" + topicNameEncryptedHex )
+                    decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
+                    padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
+                    decrypted_data = decryptor.update(actual_data)
+                    unpadded = padder.update(decrypted_data) + padder.finalize()
+                    index1 = unpadded.index(b'::::')
 
-            
-                client.subscribe(topicNameEncryptedHex, qos=qos, msgid = msgid)
-                #print("Subscribed to: " ,topicNameEncryptedHex )
-                logger.log(logging.INFO, "Subscribed to: " + topicNameEncryptedHex )
-                    
-                try:
+                    message_encrypted_with_ct = unpadded[0:index1]
+                    mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
+                
+                    logger.log(logging.INFO, b'Message after decryption with session key: '+ message_encrypted_with_ct)
+
+                    choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
+     
+
                     decryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).decryptor()
                     padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).unpadder()
                     decrypted_data2 = decryptor.update(message_encrypted_with_ct)
                     unpadded_message = padder.update(decrypted_data2) + padder.finalize()
-                    logger.log(logging.WARNING, "Message is decrypted with choice token ")
-                    logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
-                    logger.log(logging.INFO, "Topic name: "+  topic_name_str)
-                except:
-                    logger.log(logging.ERROR, "CHOICE TOKEN KEY IS WRONG")
-                    return client
-                """
-                self.polynomials = []
-                salt_poly = self.polynomial_func(self.count,self.polynomials[0],self.polynomials[1],self.polynomials[2],self.polynomials[3])
-                salt_poly = str(salt_poly)
-                logger.log(logging.WARNING, "salt_poly: " + salt_poly + ", and counter value: " + str(self.count) )
-                self.count +=1
-
-                item = self.publisher_topic_dictionary[id_publisher]
-                temp_array = item[0]
-                seed_dictionary = temp_array[0]
-                logger.log(logging.ERROR, seed_dictionary)
-                topic_hash_dictionary = temp_array[1]
-                logger.log(logging.ERROR, topic_hash_dictionary)
-                hash_topic_dictionary = temp_array[2]
-                topic_boolean_dict = temp_array[3]
-                for key2,item2 in topic_boolean_dict.items(): 
-                    if topic_boolean_dict[key2] == True:
-                        topic_real = key2
-                        topic_hash = topic_hash_dictionary.get(key2, "")
-                        seed_dictionary[topic_real] = topic_hash
-                        dk = hashlib.pbkdf2_hmac('sha512', topic_hash.encode(), salt_poly.encode(), 100000)
-                        del hash_topic_dictionary[topic_hash]
-                        hash_topic_dictionary[dk.hex()] = topic_real
-                        topic_hash_dictionary[topic_real] = dk.hex()
-
-                self.publisher_topic_dictionary[key] = [seed_dictionary,topic_hash_dictionary,hash_topic_dictionary,topic_boolean_dict]
- 
-                  """
                     
+                    logger.log(logging.INFO, "Topic name: "+  topic_name_str)
 
-                if msg.retain == 0:
-                    retainFlag = False
+                    if msg.retain == 0:
+                        retainFlag = False
+                    else:
+                        retainFlag = True
+
+                    message_hash_str = str(msg.qos) + str(retainFlag) + str(msg.mid)
+                    message_bytes_hash = message_encrypted_with_ct + force_bytes(message_hash_str)
+                    print("message_hash_str ", message_hash_str)
+                    print("message_bytes_hash ", message_bytes_hash)
+
+                    h = hmac.HMAC(self.session_key, hashes.SHA256())
+                    h.update(message_bytes_hash)
+                    signature = h.finalize()
+
+
+                    if(signature == mac_of_payload):
+                       
+                        logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
+                        logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
+                        index_of_polynomial = unpadded_message.rfind(b'::::')
+                        topic_list = unpadded_message[0:index_of_polynomial]
+                        polynomial = unpadded_message[index_of_polynomial+4:]
+                        polynomial = bytes.decode(polynomial, 'utf-8')
+                        logger.log(logging.INFO, "polynomial " + polynomial)
+                        poly_list = polynomial.split(",")
+                        
+                        self.poly_list = poly_list
+                        
+                        topic_list = topic_list.split(b'::::')
+                      
+                        for topic_seed_pair in topic_list:
+
+                            index = topic_seed_pair.index(b'$$$$')
+                            topicName = topic_seed_pair[0:index]
+                            seed = topic_seed_pair[index+4:]
+                            topic_name_str = force_str(topicName)
+                            seed_str = force_str(seed)
+                            self.seed_dictionary[topic_name_str] = seed_str
+                            self.count_dictionary[topic_name_str] = 1
+                            salt_poly = self.polynomial_func(self.count_dictionary[topic_name_str],int(poly_list[0]),int(poly_list[1]),int(poly_list[2]),int(poly_list[3]))
+                            salt_poly = str(salt_poly)
+                            logger.log(logging.WARNING, "salt_poly: " + salt_poly + " and its count: " + str(self.count_dictionary[topic_name_str]) + " and it topic name:" + topic_name_str )
+                            
+                            dk = hashlib.pbkdf2_hmac('sha512', seed_str.encode(), salt_poly.encode(), 100000)
+                            dk2 = dk.hex()
+                            dk2 = str(dk2)
+                            self.topic_hash_dictionary[topic_name_str] = dk2 
+                            self.hash_topic_dictionary[dk2] = topic_name_str
+                            self.topic_subscribe_boolean[topic_name_str] = False
+                            logger.log(logging.WARNING, "Topic names: " + topic_name_str + ", and its first hash value: " + dk2 )
+                        
+             
+
+                    else:
+                        #print("The content of the payload is changed, Mac of the payload is not correct")
+                        logger.log(logging.INFO, "The content of the payload is changed, Mac of the payload is not correct")
+                        
                 else:
-                    retainFlag = True
+                    #print("The content of the topic name is changed")
+                    logger.log(logging.INFO, "The content of the topic name is changed")
 
-                message_hash_str = str(msg.qos) + str(retainFlag) + str(msg.mid)
-                message_bytes_hash = message_encrypted_with_ct + force_bytes(message_hash_str)
-                print("message_hash_str ", message_hash_str)
-                print("message_bytes_hash ", message_bytes_hash)
-
-                h = hmac.HMAC(self.session_key, hashes.SHA256())
-                h.update(message_bytes_hash)
-                signature = h.finalize()
-
-
-                if(signature == mac_of_payload):
-                    #print("The content of the payload is not changed, Mac of the payload is correct")
-                    logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
-                    #print("MESSAGE: " ,unpadded_message, "FROM ", topic_namepub )
-
-
-                else:
-                    #print("The content of the payload is changed, Mac of the payload is not correct")
-                    logger.log(logging.INFO, "The content of the payload is changed, Mac of the payload is not correct")
 
             else:
-                #print("The content of the topic name is changed")
-                logger.log(logging.INFO, "The content of the topic name is changed")
+
+                xbool = False
+                seed_dictionary = self.seed_dictionary
+            
+                logger.log(logging.ERROR, seed_dictionary)
+                topic_hash_dictionary = self.topic_hash_dictionary
+                logger.log(logging.ERROR, topic_hash_dictionary)
+                hash_topic_dictionary = self.hash_topic_dictionary
+                   
+                topic_real = hash_topic_dictionary.get(topic_name_str, "")
+                if(topic_real != ""):
+                    print(2112)
+                    xbool = True
+                 
+                       
+                logger.log(logging.WARNING,"topic_real" + topic_real)
+                logger.log(logging.WARNING,"topic_hash" + topic_name_str)
+            
+                if (xbool == False):
+                        logger.log(logging.ERROR,"There is no topic name for this hash")
+                        return client
+                
+
+
+                choiceTokenhex = self.choiceTokenDictionary[topic_real]
+
+                choiceToken = unhexlify(choiceTokenhex)
+
+                logger.log(logging.INFO, b'Decrypted topic name: ' + topic_name + b' and its mac: ' + mac_of_topic_name)
+                logger.log(logging.INFO, "Choice token of the topic: "+ choiceTokenhex )
+
+                h = hmac.HMAC(self.session_key, hashes.SHA256())
+                h.update(topic_name)
+                signature = h.finalize()
+
+                if(signature == mac_of_topic_name):
+                    #print("The content of the topic name is not changed. Mac of the topic name is correct")
+                    logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct")
+
+                    data = msg.payload
+                    data_len = data[0:2]
+                    actual_data = data[2:]
+
+                    decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
+                    padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
+                    decrypted_data = decryptor.update(actual_data)
+                    unpadded = padder.update(decrypted_data) + padder.finalize()
+                    index1 = unpadded.index(b'::::')
+
+                    message_encrypted_with_ct = unpadded[0:index1]
+                    mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
+                    #print("Message after decryption with session key: ", message_encrypted_with_ct)
+                    logger.log(logging.INFO, b'Message after decryption with session key: '+ message_encrypted_with_ct)
+
+                    choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
+                    #print("Choicetoken key: ", choicetoken_key)
+
+                    
+
+                    
+                    polynomials = self.poly_list
+                    
+                    logger.log(logging.WARNING, "counter value: " + str(self.count_dictionary[topic_real])  + " and its topic name:" + topic_real )
+                    salt_poly = self.polynomial_func(self.count_dictionary[topic_real],int(polynomials[0]),int(polynomials[1]),int(polynomials[2]),int(polynomials[3]))
+                    salt_poly = str(salt_poly)
+                    logger.log(logging.WARNING, "salt_poly: " + salt_poly + ", and counter value: " + str(self.count_dictionary[topic_real])  + " and its topic name:" + topic_real )
+
+                   
+                    self.seed_dictionary[topic_real] = topic_name_str
+                    dk = hashlib.pbkdf2_hmac('sha512', topic_name_str.encode(), salt_poly.encode(), 100000)
+                    del self.hash_topic_dictionary[topic_name_str]
+                    self.hash_topic_dictionary[dk.hex()] = topic_real
+                    self.topic_hash_dictionary[topic_real] = dk.hex()
+                    self.count_dictionary[topic_real] +=1
+                    logger.log(logging.WARNING, "Real topic name: " + topic_real + ", and its previous hash: " + topic_name_str  + " and its current hash:" + dk.hex())
+                    
+                   
+                    topicName_byte = force_bytes(dk.hex())
+                
+                
+                    msgid = self._mid_generate()
+                    print("before msgid sub", msgid)
+                    qos = 1
+
+                    topicname_str = dk.hex() + str(qos) + str(msgid)
+                    hash_bytes = force_bytes(topicname_str)
+
+                    h = hmac.HMAC(self.session_key, hashes.SHA256())
+                    h.update(hash_bytes)
+                    signature = h.finalize()
+                    #print("MAC of the topic: ", signature )
+                    logger.log(logging.INFO, b'MAC of the topic: '+ signature )
+
+
+                    topicName_subscribe = topicName_byte + b'::::' + signature
+
+                    backend = default_backend()
+                    encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
+                    padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
+                    padded_data = padder.update(topicName_subscribe) + padder.finalize()
+                    topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
+                    topicNameEncryptedHex = topicNameEncryptedByte.hex()
+                    #print("Authenticated encryption version of the topic:" ,topicNameEncryptedHex )
+                    logger.log(logging.INFO, "Authenticated encryption version of the topic:" + topicNameEncryptedHex )
+
+                
+                    client.subscribe(topicNameEncryptedHex, qos=qos, msgid = msgid)
+                    #print("Subscribed to: " ,topicNameEncryptedHex )
+                    logger.log(logging.INFO, "Subscribed to: " + topicNameEncryptedHex )
+                    send_to_unsub= self.encrypt_mac_one_topic_name(topic_name_str)
+                    client.unsubscribe(send_to_unsub)
+                    
+
+
+
+                    #bir önceki hash versionu için unsubscribe ekle 
+
+                        
+                    try:
+                        decryptor = Cipher(algorithms.AES(choicetoken_key), modes.ECB(), backend).decryptor()
+                        padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).unpadder()
+                        decrypted_data2 = decryptor.update(message_encrypted_with_ct)
+                        unpadded_message = padder.update(decrypted_data2) + padder.finalize()
+                        logger.log(logging.WARNING, "Message is decrypted with choice token ")
+                        logger.log(logging.ERROR, b'Message after decryption with choice token: '+ unpadded_message)
+                        logger.log(logging.INFO, "Topic name: "+  topic_name_str)
+                    except:
+                        logger.log(logging.ERROR, "CHOICE TOKEN KEY IS WRONG")
+                        return client
+             
+                        
+
+                    if msg.retain == 0:
+                        retainFlag = False
+                    else:
+                        retainFlag = True
+
+                    message_hash_str = str(msg.qos) + str(retainFlag) + str(msg.mid)
+                    message_bytes_hash = message_encrypted_with_ct + force_bytes(message_hash_str)
+                    print("message_hash_str ", message_hash_str)
+                    print("message_bytes_hash ", message_bytes_hash)
+
+                    h = hmac.HMAC(self.session_key, hashes.SHA256())
+                    h.update(message_bytes_hash)
+                    signature = h.finalize()
+
+
+                    if(signature == mac_of_payload):
+                        #print("The content of the payload is not changed, Mac of the payload is correct")
+                        logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
+                        #print("MESSAGE: " ,unpadded_message, "FROM ", topic_namepub )
+
+
+                    else:
+                        #print("The content of the payload is changed, Mac of the payload is not correct")
+                        logger.log(logging.INFO, "The content of the payload is changed, Mac of the payload is not correct")
+
+                else:
+                    #print("The content of the topic name is changed")
+                    logger.log(logging.INFO, "The content of the topic name is changed")
 
 
         client.on_message = on_message
         if(self.choice_state_dict[topicname] == 2):
-
+            self.topic_hashing_clear = False
             #print("----Function to subscribe to topic: ", topicname )
             logger.log(logging.INFO, "----Function to subscribe to topic: "+ topicname )
-            
-    
-            hash_and_seed_list = self.publisher_topic_dictionary[publisher_id]
-            
-            seed_dictionary = hash_and_seed_list[0]
-            topic_hash_dictionary = hash_and_seed_list[1]
-            hash_topic_dictionary = hash_and_seed_list[2]
-            seed = seed_dictionary[topicname]
-            hash = topic_hash_dictionary[topicname]
+           
+            seed = self.seed_dictionary[topicname]
+            hash = self.topic_hash_dictionary[topicname]
             logger.log(logging.WARNING,"topic:" + topicname)
             logger.log(logging.WARNING,"seed:" + seed)
             logger.log(logging.WARNING,"hash:" + hash)
@@ -2452,6 +2563,9 @@ class MyMQTTClass(mqtt.Client):
                 self.disconnect_flag = True
                 self.disconnect()
                 return -1
+            
+      
+
 
 
         #client.loop_stop()
@@ -2807,7 +2921,7 @@ class MyMQTTClass(mqtt.Client):
         self.fail_to_verify_mac = False
 
        
-        topicname_hashing = "topicHashing/" + str(self.id_client)
+        topicname_hashing = "topicHashing" 
         if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname_hashing] = 0
                 self.publishForChoiceToken(client,topicname_hashing)
@@ -2823,7 +2937,7 @@ class MyMQTTClass(mqtt.Client):
         
         
 
-        topicname1 = "newParticipant/" + str(self._client_id)
+        topicname1 = "newParticipant" 
 
         if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname1] = 0
@@ -2891,17 +3005,17 @@ class MyMQTTClass(mqtt.Client):
 
     
 
-    async def topic_hashing_subscriber_step1(self, client, publisher_id):   #used by subscriber
+    async def topic_hashing_subscriber_step1(self, client):   #used by subscriber
            
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return client
 
-        self.publish_topic_hash_publisher = [] #initialize list in each subscribe request as 0
        
-        logger.log(logging.WARNING,"Client ID of Publisher from GUI:" + publisher_id)
-        topicname1 = "newParticipant/" + str(publisher_id)
-        topicname2 = "topicHashing/" + str(publisher_id)
+       
+       
+        topicname1 = "newParticipant"
+        topicname2 = "topicHashing" 
 
         
         if (self.disconnect_flag == False):
@@ -2918,14 +3032,11 @@ class MyMQTTClass(mqtt.Client):
         while (self.choice_state_dict[topicname2] != 2 and self.disconnect_flag == False and stop == False):
                 time.sleep(0.1)
 
-        self.subscribe_success_topic_hash[str(publisher_id)] = 0
+        self.subscribe_success_topic_hash  = 0
       
-
-
         if (self.disconnect_flag == False and self.choice_state_dict[topicname2] == 2 ):
             self.choice_state_dict[topicname1] = 0
             self.publishForChoiceToken(client,topicname1)
-         
 
         while (self.choice_state_dict[topicname1] != 1 and self.disconnect_flag == False):
                 time.sleep(0.1)
@@ -2936,29 +3047,29 @@ class MyMQTTClass(mqtt.Client):
         while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
                 time.sleep(0.1)
 
-        self.subscribe_success_topic_hash[str(publisher_id)] = 0
+        self.subscribe_success_topic_hash = 0
         if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
-            self.publish_to_topichashing_clientID(client, topicname1, publisher_id)
-            self.publish_topic_hash_publisher.append(publisher_id)
+            self.publish_to_topichashing_clientID(client, topicname1)
+            
         
-        while (self.subscribe_success_topic_hash[str(publisher_id)] != 1 and self.disconnect_flag == False and stop == False):
+        while (self.subscribe_success_topic_hash != 1 and self.disconnect_flag == False and stop == False):
                 time.sleep(0.1)
 
-        if (self.subscribe_success_topic_hash[str(publisher_id)]  == 1 and self.disconnect_flag == False):
-            self.subscribe_to_topicHashing_publisher(client, topicname2, publisher_id)
+        if (self.subscribe_success_topic_hash  == 1 and self.disconnect_flag == False):
+            self.subscribe_to_topicHashing_publisher(client, topicname2)
         
-        while (self.subscribe_success_topic_hash[str(publisher_id)] != 2 and self.disconnect_flag == False and stop == False):
+        while (self.subscribe_success_topic_hash!= 2 and self.disconnect_flag == False and stop == False):
                 time.sleep(0.1)
                 print(2356)
 
-        if (self.subscribe_success_topic_hash[str(publisher_id)]  == 2 and self.disconnect_flag == False):
+        if (self.subscribe_success_topic_hash  == 2 and self.disconnect_flag == False):
             print(2362)
-            self.subscribe_to_topicHashing_publisher(client, topicname2, publisher_id)
+            self.subscribe_to_topicHashing_publisher(client, topicname2)
             print(2364)
         
         
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
-            self.subscribe_to_topicHashing_publisher(client, topicname2, publisher_id)
+            self.subscribe_to_topicHashing_publisher(client, topicname2)
 
 
         if (self.disconnect_flag == True):
@@ -2967,28 +3078,7 @@ class MyMQTTClass(mqtt.Client):
 
         self.fail_to_verify_mac = False
         return client
-    """
-    async def run_display_subscriber(self, client):                     #used by subscriber
-        for key,item in self.seed_dictionary.items():
-            print("key",key)
-            if (self.disconnect_flag == False):
-                self.choice_state_dict[key] = 0
-                self.publishForChoiceToken(client,key)
-            while (self.choice_state_dict[key] != 1 and self.disconnect_flag == False):
-                    time.sleep(0.1)
-                
-            if (self.choice_state_dict[key] == 1 and self.disconnect_flag == False):
-                    #if signVErifyFailed received do not send
-                    self.subscribe_encrypted_clientID(client, self.id_client)
-                    stop = False
-            while (self.choice_state_dict[key] != 2 and self.disconnect_flag == False and stop == False):
-                    time.sleep(0.1)
-                   
-        for key,item in self.choiceTokenDictionary.items(): 
-            logger.log(logging.ERROR, "Topic name: " + key + " and its choice token: " + item )
-        
-        return client
-        """
+   
 
     async def hash_session_real_publishes(self, client, topicName, message):      #used by publisher
         logger.log(logging.WARNING,"Topic Name from GUI:" + topicName)
@@ -3008,19 +3098,14 @@ class MyMQTTClass(mqtt.Client):
             print("here 2573")
         return client
     
-    async def hash_session_real_subscribers(self, client, topic_publisher_list):   #used by subscriber
+    async def hash_session_real_subscribers(self, client, topic_list):   #used by subscriber
         logger.log(logging.WARNING,"Topic List from GUI:")
-        logger.log(logging.WARNING, topic_publisher_list)
-        for topic_subscribe in topic_publisher_list:
-            logger.log(logging.WARNING,"topic_subscribe:" + topic_subscribe)
-            temp_list = topic_subscribe.split(",")
-            publisher = temp_list[0]
-            topic = temp_list[1]
-            publisher_id_index = publisher.index(":")
-            publisher_id = publisher[publisher_id_index+2:]
+        logger.log(logging.WARNING, topic_list)
+        for topic in topic_list:
+            logger.log(logging.WARNING,"topic:" + topic)
             topic_name_index = topic.index(":")
             topicname = topic[topic_name_index+2:]
-            logger.log(logging.WARNING,"publisher_id:" + publisher_id)
+            topicname = topicname.strip()
             logger.log(logging.WARNING,"topicname:" + topicname)
             if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname] = 0
@@ -3036,41 +3121,31 @@ class MyMQTTClass(mqtt.Client):
                     time.sleep(0.1)
             logger.log(logging.WARNING,self.choice_state_dict)
        
-        for topic_subscribe in topic_publisher_list:
-            logger.log(logging.WARNING,"topic_subscribe:" + topic_subscribe)
-            temp_list = topic_subscribe.split(",")
-            publisher = temp_list[0]
-            topic = temp_list[1]
-            publisher_id_index = publisher.index(":")
-            publisher_id = publisher[publisher_id_index+2:]
+        for topic in topic_list:
+            logger.log(logging.WARNING,"topic:" + topic)
             topic_name_index = topic.index(":")
             topicname = topic[topic_name_index+2:]
-            logger.log(logging.WARNING,"publisher_id:" + publisher_id)
+            topicname = topicname.strip()
             logger.log(logging.WARNING,"topicname:" + topicname)
-            hash_and_seed_list = self.publisher_topic_dictionary[publisher_id]
-            logger.log(logging.WARNING, hash_and_seed_list[0])
-            
-            seed_dictionary = hash_and_seed_list[0]
-            topic_hash_dictionary = hash_and_seed_list[1]
-            topic_subscribe_bool = hash_and_seed_list[3]
-            seed = seed_dictionary[topicname]
-            hash = topic_hash_dictionary[topicname]
-            topic_subscribe_bool[topicname] = True
+            hash = self.topic_hash_dictionary[topicname]
+            seed = self.seed_dictionary[topicname]
+            self.topic_subscribe_boolean[topicname] = True
             logger.log(logging.WARNING,"topic:" + topicname)
             logger.log(logging.WARNING,"seed:" + seed)
             logger.log(logging.WARNING,"hash:" + hash)
             logger.log(logging.WARNING,self.choice_state_dict)
 
             if (self.choice_state_dict[topicname] == 2 and self.disconnect_flag == False):
-                self.real_topic_hash_subscribe(client,topicname, publisher_id)
+                self.real_topic_hash_subscribe(client,topicname)
             while (self.choice_state_dict[topicname] != 3 and self.disconnect_flag == False and stop == False):
                     time.sleep(0.1)
 
             if (self.choice_state_dict[topicname] == 3 and self.disconnect_flag == False):
-                self.real_topic_hash_subscribe(client,topicname, publisher_id)
+                self.real_topic_hash_subscribe(client,topicname)
+            
             
             if (self.disconnect_flag == False and self.count_dictionary[topicname] == self.MAX_COUNT +1 ) :
-                self.subscribe_to_topicHashing_publisher(client, topicname, publisher_id)
+                self.subscribe_to_topicHashing_publisher(client, topicname)
 
 
             
