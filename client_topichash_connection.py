@@ -1381,7 +1381,7 @@ class MyMQTTClass(mqtt.Client):
             actual_data = data[2:]
             #print("Encrypted topic: " ,msg.topic )
             #print(f"Encrypted payload: `{actual_data}`")
-            logger.log(logging.INFO, b'Encrypted topic: ' + msg.topic )
+            logger.log(logging.INFO, "Encrypted topic: " + msg.topic )
             logger.log(logging.INFO, b'Encrypted payload: ' + actual_data)
             topic_hex = msg.topic
             topic_byte = unhexlify(topic_hex)
@@ -1468,10 +1468,10 @@ class MyMQTTClass(mqtt.Client):
                 logger.log(logging.INFO, "The content of the topic name is changed")
 
 
-
+        client.on_message = on_message
         if(self.choice_state_dict[topicname] == 2):
 
-            client.on_message = on_message
+            
             logger.log(logging.INFO, "----Function to subscribe to topic: "+ topicname )
             topicName_byte = force_bytes(topicname)
             msgid = self._mid_generate()
@@ -2961,7 +2961,7 @@ class MyMQTTClass(mqtt.Client):
                 logger.log(logging.WARNING, "The publisher was subscribed to " + topicname1 + " to learn the   subscribers who want to subscribe itself." )
 
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
-                self.subscribe4(client, True, False)
+                self.subscribe_for_topic_hashing(client, topicname1)
 
         if (self.disconnect_flag == True):
                 logger.log(logging.ERROR, "the connection was lost.")
@@ -2992,6 +2992,9 @@ class MyMQTTClass(mqtt.Client):
             while (self.choice_state_dict[topicName] != 2 and self.disconnect_flag == False and stop == False):
                 time.sleep(0.1)
             self.publisher_hash_session_topics[topicName] = self.choiceTokenDictionary[topicName]
+            if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
+                self.subscribe_for_topic_hashing(client, "newParticipant" )
+
 
         str_1 = ""
         for elem in topicNameList:
