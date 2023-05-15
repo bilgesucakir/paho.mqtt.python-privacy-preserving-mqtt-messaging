@@ -200,7 +200,9 @@ class MyWindowMqtt:
         dummy_list = []
         dummy_list = self.mqttc.unverified_unsuback_topics_list
 
-        if len(dummy_list) < 1 and self.mqttc.unsuback_verified == True:
+
+
+        if self.mqttc.unsuback_verified == True:
 
             if self.mqttc.unsub_success:
                 for elem in selected_topics:
@@ -208,8 +210,11 @@ class MyWindowMqtt:
                     self.listbox.delete(idx)
                     #logger.log(logging.INFO, "Successfully unsubscribe from topic: "+ str(elem)) #while loop needed to display this at the very end of client_run4
         else:
-            if dummy_list[0] == False:
-                rc2 = asyncio.run(self.mqttc.run2_2(self.client, selected_topics))
+            if len(dummy_list) > 1:
+                if dummy_list[0] == False:
+                    rc2 = asyncio.run(self.mqttc.run2_2(self.client, selected_topics))
+                else:
+                    logger.log(logging.ERROR, "should not be here")
             else:
                 logger.log(logging.ERROR, "should not be here")
 
