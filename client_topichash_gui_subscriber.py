@@ -172,12 +172,16 @@ class TopicHashingSubscriberWindow:
             
         if(len(topic_list)>0):
             rc = asyncio.run(self.mqttc.hash_session_real_subscribers(self.client,topic_list))
+
+            self.listbox.delete(0,"end")
+            self.appendToList()
+            
         else:
-            logger.log(logging.WARNING,"No topic to subscribe, please select at least one topic to subscribe.")
+            if(len(received)<= 0):
+                logger.log(logging.WARNING,"No topic to subscribe, please select at least one topic to subscribe.")
 
         
-        self.listbox.delete(0,"end")
-        self.appendToList()
+        
 
         if self.mqttc.topic_hashing_clear == True:
             self.listbox.delete(0,"end")

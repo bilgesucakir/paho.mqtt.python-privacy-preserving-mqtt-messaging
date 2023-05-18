@@ -324,12 +324,12 @@ class TopicHashingPublisherWindow:
         print("TOPICNAME1",topicname1)
         message = self.entry_32.get("1.0",tk.END)
         # Search for + or # in a topic.
-        if '+' in topicname1 or '#' in topicname1 :
-            logger.log(logging.ERROR,"Publish topic name should not include the + or # wildcards")
+        if topicname1 == None:
+            logger.log(logging.ERROR,"Please select a topic from hash session topics list to publish a message.")
+        elif '+' in topicname1 or '#' in topicname1 :
+            logger.log(logging.ERROR,"Publish topic name should not include the + or # wildcards.")
         elif len(topicname1) > 65535:
-            logger.log(logging.ERROR,"Publish topic name should have length less than 65535 ")
-        elif topicname1 == None:
-            logger.log(logging.ERROR,"Topic name is none ")
+            logger.log(logging.ERROR,"Publish topic name should have length less than 65535.")
         else:
             logger.log(logging.WARNING,"Publish topic name: " + topicname1)
             rc = asyncio.run(self.mqttc.hash_session_real_publishes(self.client,topicname1, message))
