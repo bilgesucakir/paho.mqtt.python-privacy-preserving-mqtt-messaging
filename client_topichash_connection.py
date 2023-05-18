@@ -265,7 +265,8 @@ class MyMQTTClass(mqtt.Client):
 
     def connect_mqtt(self, id_client) -> mqtt:
         self._client_id = id_client
-        self.connect("127.0.0.1", 1883, 6000)
+        #self.connect("127.0.0.1", 1883, 6000)
+        self.connect("176.43.5.64", 1883, 6000)      #STATIC IP ADDRESS
         logger.log(logging.INFO, "---Connection message send to broker (step 1)---")
 
         return self
@@ -1602,15 +1603,7 @@ class MyMQTTClass(mqtt.Client):
             unpadded = padder.update(decrypted_data) + padder.finalize()
             logger.log(logging.INFO, b'Decrypted payload: ' + unpadded)
             if(self.subscribe_success_topic_hash == 2):
-                self.topic_hashing_clear = True
-
-                #initialize the dictionaries
-                self.seed_dictionary = {}
-                self.count_dictionary = {}
-                self.topic_hash_dictionary = {} 
-                self.hash_topic_dictionary = {}
-                self.topic_subscribe_boolean = {}
-
+              
                 index1 = unpadded.index(b'::::')
                 topic_name = unpadded[0:index1]
                 mac_of_topic_name = unpadded[index1+4:]
@@ -1681,6 +1674,16 @@ class MyMQTTClass(mqtt.Client):
                         if (unpadded_message == b'tick'):
                             self.tick_come = True
                             return client
+                        
+                        self.topic_hashing_clear = True
+                        self.tick_come = False
+                        #initialize the dictionaries
+                        self.seed_dictionary = {}
+                        self.count_dictionary = {}
+                        self.topic_hash_dictionary = {} 
+                        self.hash_topic_dictionary = {}
+                        self.topic_subscribe_boolean = {}
+
                         index_of_polynomial = unpadded_message.rfind(b'::::')
                         topic_list = unpadded_message[0:index_of_polynomial]
                         polynomial = unpadded_message[index_of_polynomial+4:]
@@ -2210,14 +2213,7 @@ class MyMQTTClass(mqtt.Client):
 
             topic_name_str = bytes.decode(topic_name)
             if "topicHashing" in topic_name_str: 
-                self.topic_hashing_clear = True
-                self.tick_come = False
-                self.seed_dictionary = {}
-                self.count_dictionary = {}
-                self.topic_hash_dictionary = {} 
-                self.hash_topic_dictionary = {}
-                self.topic_subscribe_boolean = {}
-                self.subscribe_success = []
+                
                 
                 
                 self.choice_state_dict[topic_name_str] == 0
@@ -2283,6 +2279,14 @@ class MyMQTTClass(mqtt.Client):
                         if (unpadded_message == b'tick'):
                             self.tick_come = True
                             return client
+                        self.topic_hashing_clear = True
+                        self.tick_come = False
+                        self.seed_dictionary = {}
+                        self.count_dictionary = {}
+                        self.topic_hash_dictionary = {} 
+                        self.hash_topic_dictionary = {}
+                        self.topic_subscribe_boolean = {}
+                        self.subscribe_success = []
                         index_of_polynomial = unpadded_message.rfind(b'::::')
                         topic_list = unpadded_message[0:index_of_polynomial]
                         polynomial = unpadded_message[index_of_polynomial+4:]

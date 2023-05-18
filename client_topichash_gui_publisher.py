@@ -138,7 +138,7 @@ class TopicHashingPublisherWindow:
 
         self.btn31['state'] = NORMAL
         self.entry_31['state'] = NORMAL
-        self.btn_start['state'] = NORMAL
+       
         self.label_id = self.mqttc.id_client
         id = "Client ID: " + self.label_id
         self.labl_id1.config(text = id)
@@ -154,6 +154,8 @@ class TopicHashingPublisherWindow:
         self.btn11['state'] = DISABLED
         client = asyncio.run(self.mqttc.start_hash_session(self.client))
         print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
+        self.btn32['state'] = NORMAL
+        self.btn_start['state'] = DISABLED
         self.client = client
         
 
@@ -308,8 +310,8 @@ class TopicHashingPublisherWindow:
         #check to enable publish mgs enrty and publish button
         size = self.listbox2.size()
         if size > 0:
-            self.btn32['state'] = NORMAL
             self.entry_32['state'] = NORMAL
+            self.btn_start['state'] = NORMAL
 
 
         self.entry_32.delete(1.0, tk.END) #delete written message in textbox after the publish
