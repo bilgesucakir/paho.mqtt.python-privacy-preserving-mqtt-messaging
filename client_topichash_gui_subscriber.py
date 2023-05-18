@@ -95,13 +95,13 @@ class TopicHashingSubscriberWindow:
     def client_run1(self):
 
         self.btn11['state'] = DISABLED
-        client = asyncio.run(self.mqttc.run1())
+        client = asyncio.run(self.mqttc.connection_for_topic_hashing_subscriber())
         print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
         self.client = client
         self.btn21['state'] = NORMAL
         self.btn211['state'] = NORMAL
         self.btn_d['state'] = NORMAL
-        client2 = asyncio.run(self.mqttc.topic_hashing_subscriber_step1(client))
+      
        
 
 

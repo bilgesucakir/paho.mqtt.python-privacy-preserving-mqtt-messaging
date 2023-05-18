@@ -1,6 +1,5 @@
 import src.paho_folder.mqtt.client as mqtt
-import time
-import datetime
+
 import random
 from diffiehellman import DiffieHellman
 import logging
@@ -25,6 +24,8 @@ from binascii import unhexlify
 from random import SystemRandom
 from random import SystemRandom
 import hashlib
+import time 
+import datetime 
 
 
 
@@ -2574,7 +2575,8 @@ class MyMQTTClass(mqtt.Client):
 
 
     async def run1(self):
-
+        run1_start = time.time()
+        
         id_client = str(random.randint(0, 100000000))
         self.id_client = id_client
         self.cert_read_fnc()
@@ -2680,13 +2682,16 @@ class MyMQTTClass(mqtt.Client):
             #else:
                 #logger.log(logging.INFO, "SELF.AUTH IS NOT EQUAL TO TRUE")
 
-
+            run1_end = time.time()
+            
+            logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(run1_end - run1_start,6)))
             if (self.authenticated == True):
                 return client
             else:
                 self.disconnect_flag = True
                 self.disconnect()
                 return -1
+       
             
       
 
@@ -2706,10 +2711,8 @@ class MyMQTTClass(mqtt.Client):
         #modification
         list_failed_suback = []
 
-
+        run2_start = time.time()
         for topicname1 in topicname_list:
-
-   
 
             if ('+' in topicname1 or '#' in topicname1) :
                 logger.log(logging.INFO, "1275 :"+ topicname1)
@@ -2745,8 +2748,8 @@ class MyMQTTClass(mqtt.Client):
 
         #modification
         self.unverified_suback_topics_list = list_failed_suback
-
-
+        run2_end = time.time()
+        logger.log(logging.CRITICAL, "SUBSCRIBE RUN TIME: " + str(round(run2_end - run2_start,6)))
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
             self.subscribe4(client, False, False)
 
@@ -2820,7 +2823,7 @@ class MyMQTTClass(mqtt.Client):
             #print("Message received from the gui:", message)
             logger.log(logging.INFO,"Topic name received from the gui:"+ topicname1)
             logger.log(logging.INFO, "Message received from the gui:"+ message)
-
+            run3_start = time.time()
             if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname1] = 0
                 self.publishForChoiceToken(client,topicname1)
@@ -2839,6 +2842,8 @@ class MyMQTTClass(mqtt.Client):
             if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
                 self.publish_real_topics(client, topicname1, message)
 
+            run3_end = time.time()
+            logger.log(logging.CRITICAL, "PUBLISH RUN TIME: " + str(round(run3_end - run3_start,6)))
             if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
                 self.subscribe4(client, True, False)
 
@@ -2855,7 +2860,7 @@ class MyMQTTClass(mqtt.Client):
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return self
-
+        run4_start = time.time()
         self.unsub_success = False
         strconcat = ""
         for elem in selected_topics_list:
@@ -2886,6 +2891,8 @@ class MyMQTTClass(mqtt.Client):
         while(len(self.unverified_unsuback_topics_list)<1):
             time.sleep(0.1)
 
+        run4_end = time.time()
+        logger.log(logging.CRITICAL, "UNSUBSCRIBE RUN TIME: " + str(round(run4_end - run4_start,6)))
         if self.received_badmac_unsub == False:
             self.unsub_success = True
 
@@ -2934,7 +2941,7 @@ class MyMQTTClass(mqtt.Client):
     
 
     async def connection_for_topic_hashing_publisher(self):   #used by publisher
-        
+        connect_pub_hash_start = time.time()
         id_client = str(random.randint(0, 100000000))
         self.id_client = id_client
         self.cert_read_fnc()
@@ -3086,13 +3093,15 @@ class MyMQTTClass(mqtt.Client):
         if (self.disconnect_flag == True):
                 logger.log(logging.ERROR, "the connection was lost.")
                 return client
-
+        connect_pub_hash_end = time.time()
+        logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(connect_pub_hash_end - connect_pub_hash_start,6)))
         self.fail_to_verify_mac = False
         stop = False
         return client
     
 
     async def topic_hashing_publisher_seeds(self, client, topicNameList):   #used by publisher
+        add_to_hash_session_start = time.time()
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return client
@@ -3122,8 +3131,9 @@ class MyMQTTClass(mqtt.Client):
         logger.log(logging.ERROR, str_1)
 
         self.publish_seeds(client, topicNameList) 
+        add_to_hash_session_end = time.time()
+        logger.log(logging.CRITICAL, "PUBLISH SEEDS RUN TIME: " + str(round(add_to_hash_session_end - add_to_hash_session_start,6)))
             
-
         return client
 
     
@@ -3202,17 +3212,29 @@ class MyMQTTClass(mqtt.Client):
         self.fail_to_verify_mac = False
         return client
     
+    async def connection_for_topic_hashing_subscriber(self):   #used by subscriber
+        connection_sub_hash_start = time.time()
+        client = asyncio.run(self.mqttc.run1())
+        client2 = asyncio.run(self.mqttc.topic_hashing_subscriber_step1(client))
+        connection_sub_hash_end = time.time()
+        logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(connection_sub_hash_end - connection_sub_hash_start,6)))
+        return client
+    
     async def start_hash_session(self, client):           #used by publisher
+        start_hash_session_start = time.time()
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return client
         
         if (self.count == 1 and self.tick_bool == False ):
                 self.publish_tick(client)
+        start_hash_session_end = time.time()
+        logger.log(logging.CRITICAL, "START HASH SESSION RUN TIME: " + str(round(start_hash_session_end - start_hash_session_start,6)))
         return client
    
 
     async def hash_session_real_publishes(self, client, topicName, message):      #used by publisher
+        hash_real_publish_start = time.time()
         logger.log(logging.WARNING,"Topic Name from GUI:" + topicName)
         logger.log(logging.WARNING,"Message from GUI:" + message)
         if (self.disconnect_flag == True):
@@ -3230,11 +3252,14 @@ class MyMQTTClass(mqtt.Client):
             self.count = 0
             self.tick_bool = False
             print("here 2573")
+        hash_real_publish_end = time.time()
+        logger.log(logging.CRITICAL, "HASH TOPIC PUBLISH RUN TIME: " + str(round(hash_real_publish_end - hash_real_publish_start,6)))
         return client
     
     async def hash_session_real_subscribers(self, client, topic_list):   #used by subscriber
         logger.log(logging.WARNING,"Topic List from GUI:")
         logger.log(logging.WARNING, topic_list)
+        hash_real_subscriber_start = time.time()
         if(self.tick_come == False):
             for topic in topic_list:
                 logger.log(logging.WARNING,"topic:" + topic)
@@ -3284,10 +3309,11 @@ class MyMQTTClass(mqtt.Client):
 
 
     
-            
+        hash_real_subscriber_end = time.time()
+        logger.log(logging.CRITICAL, "HASH TOPIC SUBSCRIBE RUN TIME: " + str(round(hash_real_subscriber_end - hash_real_subscriber_start,6)))
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
-            
+        
         
         return client
 
@@ -3295,7 +3321,7 @@ class MyMQTTClass(mqtt.Client):
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return self
-
+        hash_unsub_start = time.time()
         self.unsub_success = False
         strconcat = ""
         hash_list = []
@@ -3333,6 +3359,8 @@ class MyMQTTClass(mqtt.Client):
 
         self.received_badmac_unsub = False
         self.fail_to_verify_mac = False
+        hash_unsub_end = time.time()
+        logger.log(logging.CRITICAL, "HASH UNSUBSCRIBE RUN TIME: " + str(round(hash_unsub_end - hash_unsub_start,6)))
 
         return client
 
