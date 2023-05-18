@@ -60,7 +60,7 @@ class TopicHashingSubscriberWindow:
 
         
         self.labl_22 = tk.Label(base, text="Subscribed Topics:",width=20,font=("bold", 10))
-        self.labl_22.place(x=5,y=290)
+        self.labl_22.place(x=-15,y=290)
 
         #bilgesu modification
         self.frame = tk.Frame(base)
