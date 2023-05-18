@@ -26,6 +26,7 @@ class MyWindowMqtt:
     def __init__(self, base, mqttc):
         self.mqttc = mqttc
         self.client = None
+        self.base = base
 
         self.btn11 = tk.Button(base, text="Connect",width=10, command = self.client_run1,state=NORMAL)
         self.btn11.place(x=10,y=10)
@@ -88,18 +89,22 @@ class MyWindowMqtt:
 
     def client_run1(self):
 
-        self.btn11['state'] = DISABLED
+        
         client = asyncio.run(self.mqttc.run1())
         print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
-        self.client = client
-        self.btn21['state'] = NORMAL
-        self.entry_21['state'] = NORMAL
+        if(self.mqttc.disconnect_flag == True):
+            self.base.quit()
+        else:
+            self.btn11['state'] = DISABLED
+            self.client = client
+            self.btn21['state'] = NORMAL
+            self.entry_21['state'] = NORMAL
 
-        self.btn31['state'] = NORMAL
-        self.entry_31['state'] = NORMAL
-        self.entry_32['state'] = NORMAL
+            self.btn31['state'] = NORMAL
+            self.entry_31['state'] = NORMAL
+            self.entry_32['state'] = NORMAL
 
-        self.btn211['state'] = NORMAL
+            self.btn211['state'] = NORMAL
 
 
 
@@ -110,6 +115,8 @@ class MyWindowMqtt:
         return True
 
     def  client_run2(self):
+        if(self.mqttc.disconnect_flag == True):
+            self.base.quit()
         subscribed_topics = []
         for i in range(self.listbox.size()):
 
@@ -164,6 +171,8 @@ class MyWindowMqtt:
 
 
     def  client_run3(self):
+        if(self.mqttc.disconnect_flag == True):
+            self.base.quit()
         topicname1 = self.entry_31.get()
         topicname1 = topicname1.strip()    # remove leading and trailing spaces
         print("TOPICNAME1",topicname1)
@@ -186,6 +195,8 @@ class MyWindowMqtt:
 
 
     def client_run4(self):
+        if(self.mqttc.disconnect_flag == True):
+            self.base.quit()
         #get cursor selection
         selected_topics = self.selected_items()
 

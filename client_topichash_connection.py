@@ -186,67 +186,42 @@ class MyMQTTClass(mqtt.Client):
 
 
     def on_message(self, mqttc, obj, msg):
-        #print("PUBLISH message received, topic: " + msg.topic+", QOS:"+str(msg.qos)+", Payload:"+str(msg.payload))
-        # logger.log(logging.INFO, b'PUBLISH message received, topic: ' + msg.topic +  b' Payload:' + msg.payload)
         logger.log(logging.INFO, "----Publish message was received from broker")
         logger.log(logging.INFO, b'payload: ' + msg.payload)
         logger.log(logging.INFO, 'topic: ' + msg.topic )
 
     def on_publish(self, mqttc, obj, mid):
-        #print("PUBLISH message sent, message id: " + str(mid))
         logger.log(logging.INFO, "PUBLISH message sent, message id: " + str(mid))
 
     def on_subscribe(self, mqttc, obj, mid, granted_qos):
-
-
-        #print("Subscribed, message id: "+str(mid)+ ", QOS: "+str(granted_qos))
-        #print("Suback received, message id: "+str(mid))
         logger.log(logging.INFO, "Suback received, message id: "+ str(mid))
-        suback_packet = self.get_mac()
-
-        #logger.log(logging.ERROR, "mac subscribe " + str(puback_packet))
-
-        index1 = suback_packet.index(b'::::')
-        mac_real =  suback_packet[index1+4:]
-
-        #logger.log(logging.ERROR, "mac " + str(mac_real))
-
-        byte_packet_id = force_bytes(str(mid), 'utf-8')
-        message = byte_packet_id + b'::::' + b'1'
-        h = hmac.HMAC(self.session_key, hashes.SHA256())
-        h.update(message)
-        signature = h.finalize()
-
-        #logger.log(logging.ERROR, "mac " + str(signature))
-
-        if (mac_real == signature):
-            logger.log(logging.INFO, "Signature of SUBACK is verified." )
-  
-
-        else:
-            logger.log(logging.ERROR, "Signature of SUBACK is not verified." )
-            self.suback_verified = False
-
-
-
-
-
-
+        if (self.authenticated == True):
+            suback_packet = self.get_mac()
+            index1 = suback_packet.index(b'::::')
+            mac_real =  suback_packet[index1+4:]
+            byte_packet_id = force_bytes(str(mid), 'utf-8')
+            message = byte_packet_id + b'::::' + b'1'
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(message)
+            signature = h.finalize()
+            if (mac_real == signature):
+                logger.log(logging.INFO, "Signature of SUBACK is verified." )
+            else:
+                logger.log(logging.ERROR, "Signature of SUBACK is not verified." )
+                self.suback_verified = False
 
 
 
 
     def on_unsubscribe(self, mqttc, obj, mid):
-
         packet_bytes = self.get_packet_bytes()
-
         logger.log(logging.INFO, "Unsuback was received, message Id: " + str(mid))
 
         #logger.log(logging.ERROR, "mac " + str(packet_bytes))
 
         index1 = packet_bytes.index(b'::::')
         mac_real =  packet_bytes[index1+4:]
-
+        
         #logger.log(logging.ERROR, "mac " + str(mac_real))
 
         byte_packet_id = force_bytes(str(mid), 'utf-8')
@@ -268,7 +243,6 @@ class MyMQTTClass(mqtt.Client):
 
 
     def on_log(self, mqttc, obj, level, string):
-        #print("--------on_log()----"+ string)
         msg1 = "failed to receive on socket"
         if (string.find(msg1) != -1) :
             logger.log(logging.ERROR,"--------on_log()----"+ string)
@@ -277,12 +251,10 @@ class MyMQTTClass(mqtt.Client):
             logger.log(logging.INFO,"--------on_log()----"+ string)
 
     def on_connect_fail(self, mqttc):
-        #print("Connection failed")
         self.suppress_exceptions = True
         logger.log(logging.ERROR, "Connection failed")
 
     def on_connect(self, mqttc, obj, flags, rc):
-        #print("Connection successful (step 2), return code: "+str(rc))
         self.suppress_exceptions = True
         logger.log(logging.INFO, "Connection successful (step 2), return code: "+str(rc))
         self.connected_flag = True
@@ -292,36 +264,31 @@ class MyMQTTClass(mqtt.Client):
     def connect_mqtt(self, id_client) -> mqtt:
         self._client_id = id_client
         self.connect("127.0.0.1", 1883, 6000)
-        #print("---Connection message send to broker (step 1)---")
         logger.log(logging.INFO, "---Connection message send to broker (step 1)---")
 
         return self
 
-    def publish_step6(self, client: mqtt) -> mqtt:
+
+    def publish_step6(self, client: mqtt) -> mqtt:         #diffie hellman step 6 publish
 
         def on_publish(client, obj, mid):
-            #print("Publish message (step 6 of the DH Key Exchange) was send, messageID =",str(mid))
-            logger.log(logging.INFO, "Publish message (step 6 of the DH Key Exchange) was send, messageID =" + str(mid))
-            puback = self.get_puback()
-            logger.log(logging.ERROR, "mac:: " + str(puback))
+            logger.log(logging.INFO, "Publish message (step 6 of the DH Key Exchange) was send, messageID =" + str(mid))    
             self.key_establishment_state = 7
             
 
 
         client.on_publish = on_publish
-        #print("----Function: Prepare publish message for step 6 of the DH key exchange----")
         logger.log(logging.INFO, "----Function: Prepare publish message for step 6 of the DH key exchange----")
 
         dh = DiffieHellman(group=14, key_bits=256)
         dh_public = dh.get_public_key()
         self.client_diffiehellman = dh
         self.client_dh_public_key = dh_public
-        #print("Client Diffie Hellman Public Key:  ", dh_public )
+      
         try:
             client_ID_byte = bytes(self.id_client, 'UTF-8')
             message = self.client_dh_public_key  + b'::::'+ self.nonce1 + b'::::' + client_ID_byte #nonce added
 
-            #print("MESSAGE (step 6 of the DH Key Exchange): " , message)
 
             signature = self.client_x509_private_key.sign(
                 message,
@@ -332,17 +299,11 @@ class MyMQTTClass(mqtt.Client):
                 hashes.SHA256()
                 )
         except Exception as e3:
-               #print("ERROR %r ", e3.args)
                logger.log(logging.INFO, "ERROR %r " + e3.args)
 
         client_x509_pem = self.client_x509.public_bytes(encoding=serialization.Encoding.PEM)
         data_to_sent = client_x509_pem + b'::::' + dh_public + b'::::' + self.nonce1 + b'::::' + signature #nonce added
-        #print("PAYLOAD TO BE SEND TO BROKER FOR STEP 6:")
-        #print("CLIENT X509 CERTIFICATE: ",client_x509_pem)
-
-        #print("CLIENT DIFFIE HELLMAN PUBLIC KEY:", dh_public)
-        #print("NONCE 1: ", self.nonce1)
-        #print("CLIENT RSA SIGN: ", signature)
+    
         logger.log(logging.INFO, "PAYLOAD TO BE SEND TO BROKER FOR STEP 6:")
         logger.log(logging.INFO, b'CLIENT X509 CERTIFICATE: ' + client_x509_pem)
         logger.log(logging.INFO, b'CLIENT DIFFIE HELLMAN PUBLIC KEY: ' + dh_public)
@@ -359,22 +320,20 @@ class MyMQTTClass(mqtt.Client):
 
     def publish_step9(self, client: mqtt) -> mqtt:
         def on_publish(client, obj, mid):
-            #print("Publish message (step 9 of the DH Key Exchange) was send, messageID =",str(mid))
             logger.log(logging.INFO, "Publish message (step 9 of the DH Key Exchange) was send, messageID =" + str(mid))
             self.key_establishment_state = 10
 
         client.on_publish = on_publish
-        #print("----Function: Prepare publish message for step 9 of the DH key exchange----")
         logger.log(logging.INFO, "----Function: Prepare publish message for step 9 of the DH key exchange----")
 
         backend = default_backend()
         nonce3 = secrets.token_urlsafe()
 
         self.nonce3 = bytes(nonce3, 'utf-8') #nonce3 setted for later
-        #print("Nonce 3: ", nonce3)
+
         logger.log(logging.INFO, "Nonce 3: " + nonce3)
         value_str = force_str(self.nonce2) + "::::" + nonce3 + "::::" + self.id_client
-        #print("Message before encryption (step 9 of the DH Key Exchange): " , value_str)
+
         value = force_bytes(value_str)
 
         encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
@@ -382,7 +341,6 @@ class MyMQTTClass(mqtt.Client):
         padded_data = padder.update(value) + padder.finalize()
         encrypted_text = encryptor.update(padded_data) + encryptor.finalize()
 
-        #print("Encrypted message (step 9 of the DH Key Exchange): " , encrypted_text)
         logger.log(logging.INFO, b'Encrypted message (step 9 of the DH Key Exchange): ' + encrypted_text)
 
 
@@ -393,7 +351,6 @@ class MyMQTTClass(mqtt.Client):
 
     def publish_real_topics(self, client: mqtt, topicName, message) -> mqtt:
         def on_publish(client, obj, mid):
-            #print("Puback was received, messageID =",str(mid))
             logger.log(logging.INFO, "Puback was received, messageID =" + str(mid))
             puback = self.get_puback()
 
@@ -417,17 +374,12 @@ class MyMQTTClass(mqtt.Client):
 
             else:
                 logger.log(logging.ERROR, "Signature of PUBACK is not verified. You might want to make another publish.")
-
-
-
                 #taking an action is needed or not
 
 
 
 
         client.on_publish = on_publish
-        #print("----Function to publish to topic: ", topicName )
-        #print("Message to be published: ", message)
         logger.log(logging.INFO, "----Function to publish to topic: " + topicName )
         logger.log(logging.INFO, "Message to be published: " + message)
 
@@ -450,7 +402,7 @@ class MyMQTTClass(mqtt.Client):
         padded_data = padder.update(topic_publish) + padder.finalize()
         encrypted_topic = encryptor.update(padded_data) + encryptor.finalize()
         encrypted_topic_hex = encrypted_topic.hex()
-        #print("Authenticated encryption version of the topic name to be published: ", encrypted_topic_hex)
+       
         logger.log(logging.INFO, "Authenticated encryption version of the topic name to be published: " + encrypted_topic_hex)
 
         message_byte = force_bytes(message)
@@ -465,7 +417,6 @@ class MyMQTTClass(mqtt.Client):
         padded_data = padder.update(message_byte) + padder.finalize()
         encrypted_message = encryptor.update(padded_data) + encryptor.finalize()
         encrypted_message_byte = force_bytes(encrypted_message)
-        #print("Message after encryption with the choice token: ", encrypted_message)
         logger.log(logging.INFO, b'Message after encryption with the choice token: '+ encrypted_message)
 
         qos = 1
@@ -486,7 +437,7 @@ class MyMQTTClass(mqtt.Client):
         padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
         padded_data = padder.update(message_publish) + padder.finalize()
         encrypted_message2 = encryptor.update(padded_data) + encryptor.finalize()
-        #print("Message after authenticated encyption with the session key: ", encrypted_message2)
+       
         logger.log(logging.INFO, b'Message after authenticated encyption with the session key: '+ encrypted_message2)
 
         client.publish(encrypted_topic_hex, encrypted_message2 , qos = qos, retain = retainFlag, msgid=msgid)
@@ -501,8 +452,28 @@ class MyMQTTClass(mqtt.Client):
     def publishForChoiceToken(self, client: mqtt,topicname1x) -> mqtt:
 
         def on_publish(client, obj, mid):
-            #print("----Puback was received---- (step 3 of choice token schema) ")
             logger.log(logging.INFO, "----Puback was received---- (step 3 of choice token schema) ")
+            puback = self.get_puback()
+
+            #logger.log(logging.ERROR, "mac " + str(puback))
+
+            index1 = puback.index(b'::::')
+            mac_real =  puback[index1+4:]
+
+            #logger.log(logging.ERROR, "mac " + str(mac_real))
+
+            byte_packet_id = force_bytes(str(mid), 'utf-8')
+            message = byte_packet_id 
+            h = hmac.HMAC(self.session_key, hashes.SHA256())
+            h.update(message)
+            signature = h.finalize()
+
+            #logger.log(logging.ERROR, "mac " + str(signature))
+
+            if mac_real == signature:
+                logger.log(logging.INFO, "Signature of PUBACK is verified.")
+            else:
+                logger.log(logging.ERROR, "Signature of PUBACK is not verified.")
 
         client.on_publish = on_publish
 
@@ -574,9 +545,7 @@ class MyMQTTClass(mqtt.Client):
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
             padded_data = padder.update(payload) + padder.finalize()
             payloadByte = encryptor.update(padded_data) + encryptor.finalize()
-            #print("Authenticated encryption version of the topic name 'choiceToken': ", topicNameEncryptedHex)
-            #print("Payload contains the topic name for which a choice token is asked: ",topicWanted)
-            #print("Authenticated encryption version of the payload: ",payloadByte)
+            
             logger.log(logging.INFO, "Authenticated encryption version of the topic name 'choiceToken': " + topicNameEncryptedHex)
             logger.log(logging.INFO, b'Payload contains the topic name for which a choice token is asked: '+ topicWanted)
             logger.log(logging.INFO, b'Authenticated encryption version of the payload: ' + payloadByte)
@@ -602,15 +571,13 @@ class MyMQTTClass(mqtt.Client):
     def subscribe_encrypted_clientID(self, client: mqtt, id_client):
 
         def on_message(client, userdata, msg):
-            #print("----Publish message was received from broker (step 4 of choice token schema)---- from " , msg.topic, " topic")
+           
             logger.log(logging.INFO, "----Publish message was received from broker (step 4 of choice token schema)---- from topic: " + msg.topic )
-            #print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
+          
             data = msg.payload
             data_len = data[0:2]
             actual_data = data[2:]
-            #print(data_len)
-            #print(actual_data)
-            #print("Encrypted data: ", actual_data )
+         
             logger.log(logging.INFO, b'Encrypted data: '+ actual_data )
 
             backend = default_backend()
@@ -1081,7 +1048,6 @@ class MyMQTTClass(mqtt.Client):
             if (self.key_establishment_state == 3):
                 #print("----Publish message was received from broker (step 5 of the DH)---- from " , msg.topic , " topic")
                 logger.log(logging.INFO, "----Publish message was received from broker (step 5 of the DH)---- from " + msg.topic + " topic")
-                #print(f"ALL DATA `{msg.payload}` from `{msg.topic}` topic")
                 data = msg.payload
 
                 data_len = data[0:2]
@@ -1105,11 +1071,7 @@ class MyMQTTClass(mqtt.Client):
                 self.nonce1 = nonce_1
 
                 broker_rsa_sign = nonce_rsa_sign[index3+4:]
-                #print("PAYLOAD COMING FROM BROKER FOR STEP 5:")
-                #print("BROKER X509 CERTIFICATE: ",force_str(broker_x509_pem))
-                #print("BROKER DIFFIE HELLMAN PUBLIC KEY:", broker_dh_public_key)
-                #print("NONCE_1: ", nonce_1)
-                #print("BROKER RSA SIGN: ", broker_rsa_sign)
+               
                 logger.log(logging.INFO, "PAYLOAD COMING FROM BROKER FOR STEP 5:")
                 logger.log(logging.INFO, b'BROKER X509 CERTIFICATE: ' + broker_x509_pem)
                 logger.log(logging.INFO, b'BROKER DIFFIE HELLMAN PUBLIC KEY IN HEX FORMAT:'+ broker_dh_public_key)
@@ -1131,11 +1093,12 @@ class MyMQTTClass(mqtt.Client):
                     format=serialization.PublicFormat.SubjectPublicKeyInfo
                 )
 
-                #print("BROKER X509 PUBLIC KEY:", broker_x509_public_key_pem)
+              
                 logger.log(logging.INFO, b'BROKER X509 PUBLIC KEY:' + broker_x509_public_key_pem)
 
                 client_ID_byte = bytes(self.id_client, 'UTF-8')
                 message = broker_dh_public_key + b'::::' + self.nonce1 + b'::::' + client_ID_byte
+                #message = broker_dh_public_key + b'::::' + self.nonce1 + b'::::'    #for error cases
                 message_bytes = bytes(message)
                 broker_rsa_sign_bytes = bytes(broker_rsa_sign)
 
@@ -1157,7 +1120,7 @@ class MyMQTTClass(mqtt.Client):
 
                 except:
                     #print("MESSAGE NOT VERIFIED")
-                    logger.log(logging.INFO, "MESSAGE NOT VERIFIED")
+                    logger.log(logging.ERROR, "MESSAGE NOT VERIFIED")
                     self.disconnect_flag = True
                     self.disconnect()
 
@@ -1250,6 +1213,7 @@ class MyMQTTClass(mqtt.Client):
 
                 index1 = unpadded.index(b'::::')
                 comming_nonce3 = unpadded[0:index1]
+                #comming_nonce3 = unpadded[0:]    #error case
                 comming_client_id = unpadded[index1+4:]
 
 
@@ -1263,8 +1227,8 @@ class MyMQTTClass(mqtt.Client):
                     #not auth received from broker
 
                     self._dontreconnect = True
-                    self.disconnect()
-                    self.disconnect_flag = True
+                    #self.disconnect()
+                    #self.disconnect_flag = True
 
 
 
@@ -2464,7 +2428,7 @@ class MyMQTTClass(mqtt.Client):
         id_client = str(random.randint(0, 100000000))
         self.id_client = id_client
         self.cert_read_fnc()
-        #print("CLIENT ID: " , id_client)
+    
         logger.log(logging.INFO, "CLIENT ID: " + id_client)
         client = self.connect_mqtt(id_client)
 
@@ -2474,23 +2438,27 @@ class MyMQTTClass(mqtt.Client):
             time.sleep(0.1)
         if self.key_establishment_state == 2:
             await self.subscribe_clientID(client, id_client)
-        #print("211", self.key_establishment_state)
+      
         while self.key_establishment_state != 5:
             time.sleep(0.1)
+            if self.disconnect_flag == True:
+                logger.log(logging.ERROR, "THE RSA SIGNATURE COMMING FROM THE BROKER CANNOT VERIFIED")
+                self.disconnect()
+                return client
 
-        #print("215", self.key_establishment_state)
+      
         if self.key_establishment_state == 5:
             self.publish_step6(client)
             dh_shared = self.client_diffiehellman.generate_shared_key(self.broker_dh_public_key)
 
             self.dh_shared_key = dh_shared
-        #print("221", self.key_establishment_state)
-        #print("SHARED DH KEY: ",self.dh_shared_key)
+       
+
         logger.log(logging.INFO, b'SHARED DH KEY: ' + self.dh_shared_key)
 
         sessionkey = force_bytes(base64.urlsafe_b64encode(force_bytes(self.dh_shared_key))[:32])
         self.session_key = sessionkey
-        #print("SESSION KEY DERIVED FROM THE DH SHARED KEY: ", self.session_key )
+       
         logger.log(logging.INFO, b'SESSION KEY DERIVED FROM THE DH SHARED KEY: ' + self.session_key)
 
 
@@ -2499,6 +2467,7 @@ class MyMQTTClass(mqtt.Client):
         if self.key_establishment_state == 7:
             await self.subscribe_clientID(client, id_client)  #take the publish message from broker at step 8
 
+        
 
         while self.comming_client_id == None:
             time.sleep(0.1)
@@ -2518,28 +2487,30 @@ class MyMQTTClass(mqtt.Client):
             time.sleep(0.1)
 
         if self.key_establishment_state == 8:
-            #print("state 8")
             self.publish_step9(client)
 
         stopWhile = False #bilgesu modification
+        print(2487)
 
         while self.key_establishment_state != 10:
             time.sleep(0.1)
         if self.key_establishment_state == 10:
 
-            #logger.log(logging.INFO, "SELF.KEY_ESTABLSIHMENT_STATE IS 10")
+            logger.log(logging.INFO, "SELF.KEY_ESTABLSIHMENT_STATE IS 10")
 
-            #print("STATE 10")
             await self.subscribe_clientID(client, id_client)
 
             while (self.authenticated == False and stopWhile == False): #bilgesu modification
                 time.sleep(0.1)
+                print(2505)
+                if self.disconnect_flag == True:
+                    logger.log(logging.ERROR, "BROKER CANNOT BE AUTHENTICATED DUE TO VERIFICATION FAILURE")
+                    self.disconnect()
+                    return client
 
                 if(self._dontreconnect == True): #bilgesu modification
 
-                    #logger.log(logging.INFO, "SELF._DONTRECONNECT IS TRUE")
-                    
-
+                    logger.log(logging.INFO, "BROKER DISCONNECTS YOU BECAUSE IT CANNOT AUTHENTICATE YOU")
                     self.disconnect_flag = True
                     stopWhile = True
 
@@ -2900,6 +2871,7 @@ class MyMQTTClass(mqtt.Client):
                 if(self._dontreconnect == True): #bilgesu modification
 
                     #logger.log(logging.INFO, "SELF._DONTRECONNECT IS TRUE")
+                    logger.log(logging.INFO, "BROKER DISCONNECTS YOU BECAUSE IT CANNOT AUTHENTICATE YOU")
                     
 
                     self.disconnect_flag = True
