@@ -60,7 +60,7 @@ class TopicHashingSubscriberWindow:
 
         
         self.labl_22 = tk.Label(base, text="Subscribed Topics:",width=20,font=("bold", 10))
-        self.labl_22.place(x=5,y=290)
+        self.labl_22.place(x=-15,y=290)
 
         #bilgesu modification
         self.frame = tk.Frame(base)
@@ -143,12 +143,42 @@ class TopicHashingSubscriberWindow:
         if (self.mqttc.tick_come == True):
             logger.log(logging.ERROR, "Hash Session start already, you have to wait the next session to subscribe")
         received = self.selected_items_subscribe() 
+
+
+        subscribed_topics = []
+        for i in range(self.listbox.size()):
+            elem = self.listbox.get(i)
+            subscribed_topics.append(str(elem))
+
+
         topic_list = []
         for topic in received:
-            topic_list.append(topic)
+            topic1x = topic[12:]    # remove leading and trailing spaces
+            if (len(topic1x) == 0 or len(topic1x) > 65535 ) :
+                logger.log(logging.ERROR,"Subcribe topic name length error, topic: " + topic1x)
+            elif ('#/' in topic1x) :
+                logger.log(logging.ERROR,"Subcribe topic name wildcard error, topic: " + topic1x)
+            elif topic1x in subscribed_topics:
+                logger.log(logging.ERROR,"You have already subscribed to this topic: " + topic1x)
+                
+            else:
+                wordlist = topic1x.split('/')
+                if any('+' in p or '#' in p for p in wordlist if len(p) > 1) :
+                    logger.log(logging.ERROR,"Subcribe topic name wildcard error, topic: " + topic1x)
+
+                else:
+                    topic_list.append(topic)
+                    logger.log(logging.WARNING,"Will subscribe to topic: " + topic1x)
             
-        rc = asyncio.run(self.mqttc.hash_session_real_subscribers(self.client,topic_list))
+        if(len(topic_list)>0):
+            rc = asyncio.run(self.mqttc.hash_session_real_subscribers(self.client,topic_list))
+        else:
+            logger.log(logging.WARNING,"No topic to subscribe, please select at least one topic to subscribe.")
+
+        
+        self.listbox.delete(0,"end")
         self.appendToList()
+
         if self.mqttc.topic_hashing_clear == True:
             self.listbox.delete(0,"end")
             self.listbox3.delete(0,"end")
