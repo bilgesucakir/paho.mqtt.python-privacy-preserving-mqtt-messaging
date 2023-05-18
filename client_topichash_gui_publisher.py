@@ -83,6 +83,9 @@ class TopicHashingPublisherWindow:
 
         self.btn331 = tk.Button(base, text='Remove from Publishable Topics',width=25, command = self.removeFromPublishableTopics,state=DISABLED)
         self.btn331.place(x=160,y=170)
+
+        self.btn_start = tk.Button(base, text='Start Hash Session',width=25, command = self.start_session,state=DISABLED)
+        self.btn_start.place(x=160,y=240)
         
 
 
@@ -135,6 +138,7 @@ class TopicHashingPublisherWindow:
 
         self.btn31['state'] = NORMAL
         self.entry_31['state'] = NORMAL
+        self.btn_start['state'] = NORMAL
         self.label_id = self.mqttc.id_client
         id = "Client ID: " + self.label_id
         self.labl_id1.config(text = id)
@@ -144,6 +148,14 @@ class TopicHashingPublisherWindow:
 
         #self.btn211['state'] = NORMAL
 
+
+    def start_session(self):
+
+        self.btn11['state'] = DISABLED
+        client = asyncio.run(self.mqttc.start_hash_session(self.client))
+        print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
+        self.client = client
+        
 
     def removeFromPublishableTopics(self):
 

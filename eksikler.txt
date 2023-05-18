@@ -1,0 +1,14 @@
+#Suback, puback ve unsuback’nın macleri eşleşmeyince alınacak aksiyonlar - yapıldı
+
+
+Diffie Hellman
+Broker_handler.py → 704.satır → diffie hellman clienttan gelen step 6’daki mesajdaki sign verified edilmezse error case → client tarafında ‘here, loop stop added’ yazıyor
+Broker_handler.py → 667.satır → diffie hellman clienttan gelen step 6’daki mesajdaki nonce 1 broker tarafında eşleşmezse error case’i → client tarafında ‘here, loop stop added’ yazıyor
+
+GENEL İLETİŞİM
+broker.py’de 785.e satırda subscribe mesajlarından gelen macler eşleşmeyince aksyion alınmıyor
+
+
+topic_hashing tick olayı 
+
+performance testi için dosyalardan okuma 

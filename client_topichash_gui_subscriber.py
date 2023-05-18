@@ -140,6 +140,8 @@ class TopicHashingSubscriberWindow:
 
 
     def client_run2(self):
+        if (self.mqttc.tick_come == True):
+            logger.log(logging.ERROR, "Hash Session start already, you have to wait the next session to subscribe")
         received = self.selected_items_subscribe() 
 
 
