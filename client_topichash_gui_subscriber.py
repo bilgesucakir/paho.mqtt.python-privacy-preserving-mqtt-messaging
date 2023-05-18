@@ -161,7 +161,7 @@ class TopicHashingSubscriberWindow:
 
         print("Will unsubscribe from", selected_topics)
 
-        rc = asyncio.run(self.mqttc.run4(self.client, selected_topics))
+        rc = asyncio.run(self.mqttc.run_topic_hash_unsubscribe(self.client, selected_topics))
 
 
 

@@ -2744,13 +2744,16 @@ class MyMQTTClass(mqtt.Client):
         strconcat = ""
         for elem in selected_topics_list:
             strconcat += elem + ", "
+            
 
         strconcat = strconcat[0:len(strconcat)-2]
 
         #unsubscribe from each topic
         logger.log(logging.INFO,"Topic names to unsubscribe received from the gui:"+ strconcat)
 
+
         send_to_unsub_list = await self.encrypt_mac_topic_names(selected_topics_list)
+
 
         if self.disconnect_flag == False and len(send_to_unsub_list) > 0:
             client.unsubscribe(send_to_unsub_list)
@@ -3151,19 +3154,57 @@ class MyMQTTClass(mqtt.Client):
                 self.subscribe_to_topicHashing_publisher(client, topicname)
 
 
-            
-
-
-
-
-        
-                   
-                
+    
             
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             
         
+        return client
+
+    async def run_topic_hash_unsubscribe(self, client, selected_topics_list):
+        if (self.disconnect_flag == True):
+            logger.log(logging.ERROR, "the connection was lost.")
+            return self
+
+        self.unsub_success = False
+        strconcat = ""
+        hash_list = []
+        for elem in selected_topics_list:
+            strconcat += elem + ", "
+            hash_version = self.topic_hash_dictionary[elem]
+            logger.log(logging.INFO,"elem:"+ elem)
+            logger.log(logging.INFO,"hash_version:"+ hash_version)
+            hash_list.append(hash_version)
+            del self.topic_hash_dictionary[elem] 
+            del self.hash_topic_dictionary[hash_version]
+            del self.seed_dictionary[elem]
+
+        strconcat = strconcat[0:len(strconcat)-2]
+
+        #unsubscribe from each topic
+        logger.log(logging.INFO,"hash_list:"+ str(hash_list))
+        logger.log(logging.INFO,"Topic names to unsubscribe received from the gui:"+ strconcat)
+
+        send_to_unsub_list = await self.encrypt_mac_topic_names(hash_list)
+
+        if self.disconnect_flag == False and len(send_to_unsub_list) > 0:
+            client.unsubscribe(send_to_unsub_list)
+
+
+        if self.disconnect_flag == False:
+
+            await self.receive_message_after_unsub(client)
+
+        while(len(self.unverified_unsuback_topics_list)<1):
+            time.sleep(0.1)
+
+        if self.received_badmac_unsub == False:
+            self.unsub_success = True
+
+        self.received_badmac_unsub = False
+        self.fail_to_verify_mac = False
+
         return client
 
 
