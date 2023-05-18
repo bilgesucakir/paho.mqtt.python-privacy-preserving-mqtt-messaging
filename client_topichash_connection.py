@@ -638,7 +638,7 @@ class MyMQTTClass(mqtt.Client):
 
                 if(mac_of_choice_token == signature):
                     #print("The content of the message has not been changed. Mac is correct ")
-                    logger.log(logging.INFO, "The content of the message has not been changed. Mac is correct ")
+                    logger.log(logging.INFO, "The content of the message has not been changed. Mac is correct.")
                     topicName_str = bytes.decode(topicName)
 
                     #print("choicetoken 367: ", choiceToken)
@@ -653,7 +653,7 @@ class MyMQTTClass(mqtt.Client):
                     self.choice_state_dict[topicName_str] = 2
                 else:
                     #print("The content of the message has been changed. Mac is not correct")
-                    logger.log(logging.INFO, "The content of the message has been changed. Mac is not correct")
+                    logger.log(logging.ERROR, "The content of the message has been changed. Mac is not correct")
 
         client.on_message = on_message
 
@@ -779,7 +779,7 @@ class MyMQTTClass(mqtt.Client):
 
                 if(signature == mac_of_payload):
                     #print("The content of the payload is not changed, Mac of the payload is correct")
-                    logger.log(logging.ERROR, "The content of the payload is not changed, Mac of the payload is correct")
+                    logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
                     #print("MESSAGE: " ,unpadded_message, "FROM ", topic_namepub )
 
                 else:
@@ -1385,7 +1385,7 @@ class MyMQTTClass(mqtt.Client):
 
             if(signature == mac_of_topic_name):
                 #print("The content of the topic name is not changed. Mac of the topic name is correct")
-                logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct")
+                logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct.")
 
                 data = msg.payload
                 data_len = data[0:2]
@@ -1410,8 +1410,9 @@ class MyMQTTClass(mqtt.Client):
                 decrypted_data2 = decryptor.update(message_encrypted_with_ct)
                 unpadded_message = padder.update(decrypted_data2) + padder.finalize()
                 #print("Message after decryption with choice token: ", unpadded_message, " from topic: ",  topic_name_str )
-                logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
-                logger.log(logging.INFO, "Topic name: "+  topic_name_str)
+                
+                '''logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
+                logger.log(logging.INFO, "Topic name: "+  topic_name_str)'''
 
                 if msg.retain == 0:
                     retainFlag = False
@@ -1430,16 +1431,24 @@ class MyMQTTClass(mqtt.Client):
 
                 if(signature == mac_of_payload):
                     #print("The content of the payload is not changed, Mac of the payload is correct")
-                    logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
+                    logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct.")
                     #print("MESSAGE: " ,unpadded_message, "FROM ", topic_namepub )
+
+                    logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
+                    logger.log(logging.INFO, "Topic name: "+  topic_name_str)
 
                 else:
                     #print("The content of the payload is changed, Mac of the payload is not correct")
-                    logger.log(logging.INFO, "The content of the payload is changed, Mac of the payload is not correct")
+                    logger.log(logging.ERROR, "The content of the payload is changed, Mac of the payload is not correct.")
+
+                    logger.log(logging.ERROR, "Received message is discarded due to received incorrect Mac.")
 
             else:
                 #print("The content of the topic name is changed")
-                logger.log(logging.INFO, "The content of the topic name is changed")
+                logger.log(logging.ERROR, "The content of the topic name is changed, Mac of the topic name is not correct.")
+
+                logger.log(logging.ERROR, "Received message is discarded due to received incorrect Mac.")
+
 
 
         client.on_message = on_message
@@ -1629,7 +1638,7 @@ class MyMQTTClass(mqtt.Client):
 
                 if(signature == mac_of_topic_name):
                     #print("The content of the topic name is not changed. Mac of the topic name is correct")
-                    logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct")
+                    logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct.")
 
                     data = msg.payload
                     data_len = data[0:2]
@@ -1673,7 +1682,7 @@ class MyMQTTClass(mqtt.Client):
 
                     if(signature == mac_of_payload):
                         #print("The content of the payload is not changed, Mac of the payload is correct")
-                        logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
+                        logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct.")
                         #print("MESSAGE: " ,unpadded_message, "FROM ", topic_namepub )
                         logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
                         index_of_polynomial = unpadded_message.rfind(b'::::')
@@ -1727,12 +1736,12 @@ class MyMQTTClass(mqtt.Client):
 
                     else:
                         #print("The content of the payload is changed, Mac of the payload is not correct")
-                        logger.log(logging.INFO, "The content of the payload is changed, Mac of the payload is not correct")
+                        logger.log(logging.ERROR, "The content of the payload is changed, Mac of the payload is not correct.")
                         
 
                 else:
                     #print("The content of the topic name is changed")
-                    logger.log(logging.INFO, "The content of the topic name is changed")
+                    logger.log(logging.ERROR, "The content of the topic name is changed. Mac of the topic name is not correct")
                     
 
                 
@@ -2123,7 +2132,7 @@ class MyMQTTClass(mqtt.Client):
 
                 if(signature == mac_of_topic_name):
                     #print("The content of the topic name is not changed. Mac of the topic name is correct")
-                    logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct")
+                    logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct.")
 
                     data = msg.payload
                     data_len = data[0:2]
@@ -2167,7 +2176,7 @@ class MyMQTTClass(mqtt.Client):
 
                     if(signature == mac_of_payload):
                        
-                        logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
+                        logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct.")
                         logger.log(logging.INFO, b'Message after decryption with choice token: '+ unpadded_message)
                         index_of_polynomial = unpadded_message.rfind(b'::::')
                         topic_list = unpadded_message[0:index_of_polynomial]
@@ -2205,11 +2214,17 @@ class MyMQTTClass(mqtt.Client):
 
                     else:
                         #print("The content of the payload is changed, Mac of the payload is not correct")
-                        logger.log(logging.INFO, "The content of the payload is changed, Mac of the payload is not correct")
+                        logger.log(logging.ERROR, "The content of the payload is changed, Mac of the payload is not correct.")
+
+                        logger.log(logging.ERROR, "Received message is discarded due to received incorrect Mac.")
+
                         
                 else:
                     #print("The content of the topic name is changed")
-                    logger.log(logging.INFO, "The content of the topic name is changed")
+                    logger.log(logging.ERROR, "The content of the topic name is changed. Mac of the topic name is not correct.")
+
+                    logger.log(logging.ERROR, "Received message is discarded due to received incorrect Mac.")
+
 
 
             else:
@@ -2241,8 +2256,8 @@ class MyMQTTClass(mqtt.Client):
 
                 choiceToken = unhexlify(choiceTokenhex)
 
-                logger.log(logging.INFO, b'Decrypted topic name: ' + topic_name + b' and its mac: ' + mac_of_topic_name)
-                logger.log(logging.INFO, "Choice token of the topic: "+ choiceTokenhex )
+                '''logger.log(logging.INFO, b'Decrypted topic name: ' + topic_name + b' and its mac: ' + mac_of_topic_name)
+                logger.log(logging.INFO, "Choice token of the topic: "+ choiceTokenhex )'''
 
                 h = hmac.HMAC(self.session_key, hashes.SHA256())
                 h.update(topic_name)
@@ -2250,7 +2265,11 @@ class MyMQTTClass(mqtt.Client):
 
                 if(signature == mac_of_topic_name):
                     #print("The content of the topic name is not changed. Mac of the topic name is correct")
-                    logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct")
+                    logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct.")
+
+
+                    logger.log(logging.INFO, b'Decrypted topic name: ' + topic_name + b' and its mac: ' + mac_of_topic_name)
+                    logger.log(logging.INFO, "Choice token of the topic: "+ choiceTokenhex )
 
                     data = msg.payload
                     data_len = data[0:2]
@@ -2336,9 +2355,8 @@ class MyMQTTClass(mqtt.Client):
                         padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).unpadder()
                         decrypted_data2 = decryptor.update(message_encrypted_with_ct)
                         unpadded_message = padder.update(decrypted_data2) + padder.finalize()
-                        logger.log(logging.WARNING, "Message is decrypted with choice token ")
-                        logger.log(logging.ERROR, b'Message after decryption with choice token: '+ unpadded_message)
-                        logger.log(logging.INFO, "Topic name: "+  topic_name_str)
+                        logger.log(logging.WARNING, "Message is decrypted with choice token.")
+                        
                     except:
                         logger.log(logging.ERROR, "CHOICE TOKEN KEY IS WRONG")
                         return client
@@ -2362,17 +2380,20 @@ class MyMQTTClass(mqtt.Client):
 
                     if(signature == mac_of_payload):
                         #print("The content of the payload is not changed, Mac of the payload is correct")
-                        logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct")
+                        logger.log(logging.INFO, "The content of the payload is not changed, Mac of the payload is correct.")
                         #print("MESSAGE: " ,unpadded_message, "FROM ", topic_namepub )
+
+                        logger.log(logging.ERROR, b'Message after decryption with choice token: '+ unpadded_message)
+                        logger.log(logging.INFO, "Topic name: "+  topic_name_str)
 
 
                     else:
                         #print("The content of the payload is changed, Mac of the payload is not correct")
-                        logger.log(logging.INFO, "The content of the payload is changed, Mac of the payload is not correct")
+                        logger.log(logging.ERROR, "The content of the payload is changed, Mac of the payload is not correct.")
 
                 else:
                     #print("The content of the topic name is changed")
-                    logger.log(logging.INFO, "The content of the topic name is changed")
+                    logger.log(logging.ERROR, "The content of the topic name is changed. Mac of the topic name is not correct.")
 
 
         client.on_message = on_message
