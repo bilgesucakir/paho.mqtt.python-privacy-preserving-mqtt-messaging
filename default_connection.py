@@ -147,10 +147,10 @@ class MyMQTTClass(mqtt.Client):
             time.sleep(1.1)
 
         end_time = time.time()
-        time_measured = str(round(end_time - start_time,6))
-        self.writeToFile(time_measured=time_measured)
+        time_measured = str(round(end_time - start_time,12))
 
-        logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(end_time - start_time,6)))
+
+        logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(end_time - start_time,12)))
 
 
         return client
@@ -161,6 +161,7 @@ class MyMQTTClass(mqtt.Client):
 
     async def run2(self,client,topicname_list):
 
+        start = time.time()
         self.subscribe_success = [] #initialize list in each subscribe request as 0
 
 
@@ -176,6 +177,12 @@ class MyMQTTClass(mqtt.Client):
                 #self.SubscribeTopicsDictionary["tvbox/+/netflix"] = 0
 
                 self.subscribe_success.append(topicname1)
+
+        end = time.time()
+        time_measured = str(round(end - start,6))
+        self.writeToFile(time_measured=time_measured)
+
+        logger.log(logging.CRITICAL, "SUBSCRIBE RUN TIME: " + str(round(end - start,6)))
 
         return client
 
