@@ -8,7 +8,10 @@ Broker_handler.py → 667.satır → diffie hellman clienttan gelen step 6’dak
 GENEL İLETİŞİM
 broker.py’de 785.e satırda subscribe mesajlarından gelen macler eşleşmeyince aksyion alınmıyor
 
+TOPIC HASHING
+MACler eşleşmeyince alınacak aksiyonlar? 
 
-topic_hashing tick olayı 
+topic_hashing tick olayı  - yapıldı
+
 
 performance testi için dosyalardan okuma 
