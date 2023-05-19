@@ -265,7 +265,8 @@ class MyMQTTClass(mqtt.Client):
 
     def connect_mqtt(self, id_client) -> mqtt:
         self._client_id = id_client
-        self.connect("127.0.0.1", 1883, 6000)
+        #self.connect("127.0.0.1", 1883, 6000)
+        self.connect("176.43.5.64", 1883, 6000)
         logger.log(logging.INFO, "---Connection message send to broker (step 1)---")
 
         return self
