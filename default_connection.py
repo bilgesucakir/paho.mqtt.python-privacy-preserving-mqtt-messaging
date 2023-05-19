@@ -90,7 +90,7 @@ class MyMQTTClass(mqtt.Client):
 
     def connect_mqtt(self, id_client) -> mqtt:
         self._client_id = id_client
-        self.connect("127.0.0.1", 1883, 6000)
+        self.connect("176.43.5.64", 1883, 6000)
         #print("---Connection message send to broker (step 1)---")
         logger.log(logging.INFO, "---Connect message sent to broker ---")
 
@@ -120,8 +120,22 @@ class MyMQTTClass(mqtt.Client):
                         self.disconnect_flag = True
             return client
 
+    def writeToFile(self, time_measured):
+        file_path = "runs.txt"
+        file = open(file_path, "a")
+
+        # Write data to the file
+
+        current_time = time.time()
+        file.write(str(current_time)+ "\t" + str(time_measured)+"\n")
+
+        # Close the file
+        file.close()
+
+
 
     async def run1(self):
+        start_time = time.time()
         id_client = str(random.randint(0, 100000000))
         self.id_client = id_client
         logger.log(logging.INFO, "CLIENT ID: " + id_client)
@@ -131,6 +145,13 @@ class MyMQTTClass(mqtt.Client):
         time.sleep(0.1)
         if self.connected_flag != True:
             time.sleep(1.1)
+
+        end_time = time.time()
+        time_measured = str(round(end_time - start_time,6))
+        self.writeToFile(time_measured=time_measured)
+
+        logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(end_time - start_time,6)))
+
 
         return client
 

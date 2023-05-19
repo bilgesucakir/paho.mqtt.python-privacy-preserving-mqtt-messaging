@@ -2570,6 +2570,17 @@ class MyMQTTClass(mqtt.Client):
 
     
    
+    def writeToFile(self, time_measured):
+        file_path = "runs.txt"
+        file = open(file_path, "a")
+
+        # Write data to the file
+
+        current_time = time.time()
+        file.write(str(current_time)+ "\t" + str(time_measured)+"\n")
+
+        # Close the file
+        file.close()
 
         
 
@@ -2685,6 +2696,8 @@ class MyMQTTClass(mqtt.Client):
             run1_end = time.time()
             
             logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(run1_end - run1_start,6)))
+            time_measured = str(round(run1_end - run1_start,6))
+            self.writeToFile(time_measured=time_measured)
             if (self.authenticated == True):
                 return client
             else:
