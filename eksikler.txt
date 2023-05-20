@@ -14,4 +14,4 @@ MACler eşleşmeyince alınacak aksiyonlar?
 topic_hashing tick olayı  - yapıldı
 
 
-performance testi için dosyalardan okuma 
+decrypt ederken hata alırsa ne yapmalı? 

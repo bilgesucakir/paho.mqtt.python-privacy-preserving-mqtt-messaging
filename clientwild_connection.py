@@ -1094,12 +1094,12 @@ class MyMQTTClass(mqtt.Client):
                         hashes.SHA256()
                     )
                     #print("MESSAGE VERIFIED")
-                    logger.log(logging.INFO, "MESSAGE VERIFIED")
+                    logger.log(logging.WARNING, "MESSAGE VERIFIED")
                     self.verified = True
 
                 except:
                     #print("MESSAGE NOT VERIFIED")
-                    logger.log(logging.INFO, "MESSAGE NOT VERIFIED")
+                    logger.log(logging.ERROR, "MESSAGE NOT VERIFIED")
                     self.disconnect_flag = True
                     self.disconnect()
 
@@ -1201,7 +1201,7 @@ class MyMQTTClass(mqtt.Client):
 
                 if(bytes.decode(comming_nonce3,"utf-8") == self.id_client and comming_client_id == b'notAuthenticated'):
                     #print("Broker disconnect you due to nonce verification error at step 9")
-                    logger.log(logging.INFO, "Broker disconnect you due to nonce verification error at step 9")
+                    logger.log(logging.ERROR, "Broker disconnect you due to nonce verification error at step 9")
                     #not auth received from broker
 
                     self._dontreconnect = True
@@ -1215,7 +1215,7 @@ class MyMQTTClass(mqtt.Client):
                         #print("Received nonce 3 and sent nonce 3 are the same")
                         #print("BROKER IS AUTHENTICATED")
                         logger.log(logging.INFO, "Received nonce 3 and sent nonce 3 are the same")
-                        logger.log(logging.INFO, "BROKER IS AUTHENTICATED")
+                        logger.log(logging.WARNING, "BROKER IS AUTHENTICATED")
 
                         
 
@@ -1229,7 +1229,7 @@ class MyMQTTClass(mqtt.Client):
                         #print("Received nonce 3 and sent nonce 3 are not the same")
                         #print("BROKER CANNOT BE AUTHENTICATED")
                         logger.log(logging.INFO, "Received nonce 3 and sent nonce 3 are not the same")
-                        logger.log(logging.INFO, "BROKER CANNOT BE AUTHENTICATED")
+                        logger.log(logging.ERROR, "BROKER CANNOT BE AUTHENTICATED")
                         self.disconnect_flag = True
                         self.disconnect()
 
