@@ -180,7 +180,7 @@ class MyMQTTClass(mqtt.Client):
 
         end = time.time()
         time_measured = str(round(end - start,6))
-        self.writeToFile(time_measured=time_measured)
+        #self.writeToFile(time_measured=time_measured)
 
         logger.log(logging.CRITICAL, "SUBSCRIBE RUN TIME: " + str(round(end - start,6)))
 
@@ -203,6 +203,9 @@ class MyMQTTClass(mqtt.Client):
 
 
     async def run4(self, client, selected_topics_list):
+
+        run4_start = time.time()
+
         self.unsub_success = False
 
         topicsx1 = ""
@@ -218,6 +221,16 @@ class MyMQTTClass(mqtt.Client):
             client.unsubscribe(topicsx1)
 
         self.unsub_success = True
+
+
+        run4_end = time.time()
+
+        time_measured = str(round(run4_end - run4_start,6))
+        self.writeToFile(time_measured=time_measured)
+
+        logger.log(logging.CRITICAL, "UNSUBSCRIBE RUN TIME: " + str(round(run4_end - run4_start,6)))
+
+
         return client
 
 

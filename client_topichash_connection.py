@@ -271,8 +271,8 @@ class MyMQTTClass(mqtt.Client):
 
     def connect_mqtt(self, id_client) -> mqtt:
         self._client_id = id_client
-        self.connect("127.0.0.1", 1883, 6000)
-        #self.connect("176.43.5.64", 1883, 6000)      #STATIC IP ADDRESS
+        #self.connect("127.0.0.1", 1883, 6000)
+        self.connect("176.43.5.64", 1883, 6000)      #STATIC IP ADDRESS
         logger.log(logging.INFO, "---Connection message send to broker (step 1)---")
 
         return self
@@ -2623,7 +2623,7 @@ class MyMQTTClass(mqtt.Client):
     
    
     def writeToFile(self, time_measured):
-        file_path = "connect.txt"
+        file_path = "runs.txt"
         file = open(file_path, "a")
 
         # Write data to the file
@@ -2749,15 +2749,15 @@ class MyMQTTClass(mqtt.Client):
             
             logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(run1_end - run1_start,6)))
             time_measured = str(round(run1_end - run1_start,6))
-            self.writeToFile(time_measured=time_measured)
+            #self.writeToFile(time_measured=time_measured)
+
+
             if (self.authenticated == True):
                 return client
             else:
                 self.disconnect_flag = True
                 self.disconnect()
                 return -1
-       
-            
       
 
     async def run2(self,client,topicname_list):
@@ -2813,8 +2813,14 @@ class MyMQTTClass(mqtt.Client):
 
         #modification
         self.unverified_suback_topics_list = list_failed_suback
+
+
         run2_end = time.time()
         logger.log(logging.CRITICAL, "SUBSCRIBE RUN TIME: " + str(round(run2_end - run2_start,6)))
+        time_measured = str(round(run2_end - run2_start,6))
+        #self.writeToFile(time_measured=time_measured)
+
+
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
             self.subscribe4(client, False, False)
 
@@ -2922,6 +2928,7 @@ class MyMQTTClass(mqtt.Client):
        
 
     async def run4(self, client, selected_topics_list):
+
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return self
@@ -2943,7 +2950,7 @@ class MyMQTTClass(mqtt.Client):
 
         if self.disconnect_flag == False and len(send_to_unsub_list) > 0:
             client.unsubscribe(send_to_unsub_list)
-            logger.log(logging.INFO, "Unsubsrcibe to: "+ send_to_unsub_list)
+            logger.log(logging.INFO, "Unsubsrcibe to: ", send_to_unsub_list)
 
         if self.disconnect_flag == False:
             bool_false = False
@@ -2960,6 +2967,11 @@ class MyMQTTClass(mqtt.Client):
 
         run4_end = time.time()
         logger.log(logging.CRITICAL, "UNSUBSCRIBE RUN TIME: " + str(round(run4_end - run4_start,6)))
+        time_measured = str(round(run4_end - run4_start,6))
+        self.writeToFile(time_measured=time_measured)
+
+
+
         if self.received_badmac_unsub == False:
             self.unsub_success = True
 
