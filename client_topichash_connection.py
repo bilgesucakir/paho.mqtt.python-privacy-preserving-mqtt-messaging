@@ -879,7 +879,7 @@ class MyMQTTClass(mqtt.Client):
         def on_unsubscribe(self, obj, mid):
 
             packet_bytes = client.get_packet_bytes()
-            logger.log(logging.INFO, "Unsuback was received, message Id: " + str(mid))
+            logger.log(logging.INFO, "Unsuback was received, message Id:subscribe4 " + str(mid))
 
             #logger.log(logging.ERROR, "mac " + str(packet_bytes))
 
@@ -2895,7 +2895,9 @@ class MyMQTTClass(mqtt.Client):
             #print("Message received from the gui:", message)
             logger.log(logging.INFO,"Topic name received from the gui:"+ topicname1)
             logger.log(logging.INFO, "Message received from the gui:"+ message)
+
             run3_start = time.time()
+
             if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname1] = 0
                 self.publishForChoiceToken(client,topicname1)
@@ -2916,6 +2918,12 @@ class MyMQTTClass(mqtt.Client):
 
             run3_end = time.time()
             logger.log(logging.CRITICAL, "PUBLISH RUN TIME: " + str(round(run3_end - run3_start,6)))
+            time_measured = str(round(run3_end - run3_start,6))
+            self.writeToFile(time_measured=time_measured)
+
+
+
+
             if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
                 self.subscribe4(client, True, False)
 
@@ -2973,7 +2981,7 @@ class MyMQTTClass(mqtt.Client):
         run4_end = time.time()
         logger.log(logging.CRITICAL, "UNSUBSCRIBE RUN TIME: " + str(round(run4_end - run4_start,6)))
         time_measured = str(round(run4_end - run4_start,6))
-        self.writeToFile(time_measured=time_measured)
+        #self.writeToFile(time_measured=time_measured)
 
 
 

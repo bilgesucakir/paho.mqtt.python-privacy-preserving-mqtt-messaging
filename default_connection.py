@@ -187,6 +187,8 @@ class MyMQTTClass(mqtt.Client):
         return client
 
     async def run3(self,client,topicname1, message):
+            
+            run3_start = time.time()
 
             logger.log(logging.INFO,"Topic name received from the gui:"+ topicname1)
             logger.log(logging.INFO, "Message received from the gui:"+ message)
@@ -197,6 +199,14 @@ class MyMQTTClass(mqtt.Client):
                 #client.publish("tvbox/films/bluetv", "test msg1 off",qos=1)
                 #client.publish("tvbox/series", "test msg1 off",qos=1)
                 #client.publish("tvbox/series/disneyplus", "test msg1 off",qos=1)
+
+
+            run3_end = time.time()
+            time_measured = str(round(run3_end - run3_start,6))
+            self.writeToFile(time_measured=time_measured)
+
+            logger.log(logging.CRITICAL, "PUBLISH RUN TIME: " + str(round(run3_end - run3_start,6)))
+
 
             return client
         #client.loop_stop()
@@ -224,9 +234,8 @@ class MyMQTTClass(mqtt.Client):
 
 
         run4_end = time.time()
-
         time_measured = str(round(run4_end - run4_start,6))
-        self.writeToFile(time_measured=time_measured)
+        #self.writeToFile(time_measured=time_measured)
 
         logger.log(logging.CRITICAL, "UNSUBSCRIBE RUN TIME: " + str(round(run4_end - run4_start,6)))
 
