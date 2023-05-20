@@ -1391,6 +1391,7 @@ class MyMQTTClass(mqtt.Client):
         logger.log(logging.INFO, "Unsubscribe List : "+ encrypted_hex)
         return return_list
     
+    
 
     def subscribe_for_topic_hashing(self, client: mqtt, topicname):
         def on_message(client, userdata, msg):
@@ -2950,7 +2951,11 @@ class MyMQTTClass(mqtt.Client):
 
         if self.disconnect_flag == False and len(send_to_unsub_list) > 0:
             client.unsubscribe(send_to_unsub_list)
-            logger.log(logging.INFO, "Unsubsrcibe to: ", send_to_unsub_list)
+
+            dummy = ""
+            for elem in send_to_unsub_list:
+                dummy += elem + " "
+            logger.log(logging.INFO, "Unsubsrcibe to: "+dummy)
 
         if self.disconnect_flag == False:
             bool_false = False
