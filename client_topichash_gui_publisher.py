@@ -297,7 +297,7 @@ class TopicHashingPublisherWindow:
                 count += 1
 
 
-            logger.log(logging.INFO,"topic_hashing_publisher_seeds called for: " + str_1)
+            logger.log(logging.WARNING,"Selected Topics for this Hash Session: " + str_1)
             rc = asyncio.run(self.mqttc.topic_hashing_publisher_seeds(self.client, list_topicname2))
 
             for item in list_topicname2:
@@ -331,7 +331,7 @@ class TopicHashingPublisherWindow:
         elif len(topicname1) > 65535:
             logger.log(logging.ERROR,"Publish topic name should have length less than 65535.")
         else:
-            logger.log(logging.WARNING,"Publish topic name: " + topicname1)
+            #logger.log(logging.WARNING,"Publish topic name: " + topicname1)
             rc = asyncio.run(self.mqttc.hash_session_real_publishes(self.client,topicname1, message))
             print(" rc = asyncio.run(mqttc.run3(mqttc,topicname)) , rc :",rc)
         if(self.mqttc.hash_session_end == True):
