@@ -732,6 +732,25 @@ class MyMQTTClass(mqtt.Client):
             topic_name = unpadded[0:index1]
             mac_of_topic_name = unpadded[index1+4:]
 
+            if topic_name == b'wildcardChoiceToken':
+                    logger.log(logging.INFO, "CHOICE TOKEN FOR THE WILDCARD TOPIC AFTER DECRYPTION" )
+                    piece_2 = unpadded[index1+4:]
+                    index2 = piece_2.index(b'::::')
+                    piece_topic = piece_2[0:index2]
+                    piece_3 = piece_2[index2+4:]
+                    index3 = piece_3.index(b'::::')
+                    piece_choiceToken = piece_3[0:index3]
+                    piece_mac = piece_3[index3+4:]
+                    piece_topic = force_str(piece_topic)
+                    piece_choiceToken = piece_choiceToken.hex()
+
+                    self.choiceTokenDictionary[piece_topic] = piece_choiceToken
+                   
+                    logger.log(logging.INFO, "Topic name: " + piece_topic)
+                    logger.log(logging.INFO, "Its corresponding choice token: " + piece_choiceToken)
+                    return client
+
+         
             topic_name_str = bytes.decode(topic_name)
             choiceTokenhex = self.choiceTokenDictionary[topic_name_str]
             choiceToken = unhexlify(choiceTokenhex)
@@ -905,6 +924,7 @@ class MyMQTTClass(mqtt.Client):
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
             decrypted_data = decryptor.update(topic_byte)
             unpadded = padder.update(decrypted_data) + padder.finalize()
+            #logger.log(logging.INFO, b'decrypted_data topic: ' + decrypted_data )
 
             index1 = unpadded.index(b'::::')
             topic_name = unpadded[0:index1]
@@ -924,6 +944,7 @@ class MyMQTTClass(mqtt.Client):
                 padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).unpadder()
                 decrypted_data = decryptor.update(actual_data)
                 unpadded = padder.update(decrypted_data) + padder.finalize()
+                #logger.log(logging.INFO, b'decrypted_data payload: ' + decrypted_data )
 
                 #logger.log(logging.INFO, b'Dec payload received , unpadded= ' + unpadded)
                 index1 = unpadded.index(b'::::')    #this added at 2 may - burcu
