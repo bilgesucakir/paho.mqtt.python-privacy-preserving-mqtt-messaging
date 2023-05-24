@@ -911,6 +911,9 @@ class MyMQTTClass(mqtt.Client):
 
     def subscribe4(self, client: mqtt, is_after_publish:bool, is_unsub:bool):
         def on_message(client, userdata, msg):
+
+            receive_publish_time = time.time()
+
             #print("----Publish message was received from broker")
             #print(f"Encrypted payload: `{msg.payload}` from  encrypted topic: `{msg.topic}` ")
             logger.log(logging.INFO, "----Publish message was received from broker")
@@ -1068,7 +1071,12 @@ class MyMQTTClass(mqtt.Client):
                         logger.log(logging.WARNING, b'Message after decryption with choice token: '+ unpadded_message)
                         #print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
 
+                        publish_receive_time_2 = time.time()
 
+                        time_measured = str(round(publish_receive_time_2 - receive_publish_time,6))
+                        #self.writeToFile(time_measured=time_measured)
+
+                        logger.log(logging.CRITICAL, "PUBLISH RECEIVED DECRYPT TOTAL TIME: " + str(round(publish_receive_time_2 - receive_publish_time,6)))
 
                     else:
                         #print("The content of the payload is changed, Mac of the payload is not correct")
@@ -2750,7 +2758,7 @@ class MyMQTTClass(mqtt.Client):
             
             logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(run1_end - run1_start,6)))
             time_measured = str(round(run1_end - run1_start,6))
-            #self.writeToFile(time_measured=time_measured)
+            self.writeToFile(time_measured=time_measured)
 
 
             if (self.authenticated == True):
@@ -2919,7 +2927,7 @@ class MyMQTTClass(mqtt.Client):
             run3_end = time.time()
             logger.log(logging.CRITICAL, "PUBLISH RUN TIME: " + str(round(run3_end - run3_start,6)))
             time_measured = str(round(run3_end - run3_start,6))
-            self.writeToFile(time_measured=time_measured)
+            #self.writeToFile(time_measured=time_measured)
 
 
 
