@@ -257,7 +257,8 @@ class TopicHashingPublisherWindow:
 
             
     def appendToHashSessionTopicsList(self):
-        received = self.selected_items() 
+        received = ["1","2","3","4","5","6","7","8","9","10", "11", "12", "13", "14", "15"]
+        #received = self.selected_items() 
         hash_session_topics = []
         for i in range(self.listbox2.size()):
 
