@@ -116,6 +116,9 @@ class MyWindowMqtt:
             self.listbox.insert("end", bool_item)
 
 
+        self.entry_21.delete(0, tk.END) #delete written message in textbox after the publish
+
+
 
     def  client_run3(self):
         topicname1= self.entry_31.get()

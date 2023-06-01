@@ -157,7 +157,7 @@ class MyMQTTClass(mqtt.Client):
 
         end_time = time.time()
         time_measured = str(round(end_time - start_time,12))
-        self.writeToFile(time_measured=time_measured)
+        #self.writeToFile(time_measured=time_measured)
         logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(end_time - start_time,12)))
 
 

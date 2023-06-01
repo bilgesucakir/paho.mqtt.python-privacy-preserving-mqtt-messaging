@@ -2643,6 +2643,18 @@ class MyMQTTClass(mqtt.Client):
         # Close the file
         file.close()
 
+    def writeToFile2(self, time_measured):
+        file_path = "runs2.txt"
+        file = open(file_path, "a")
+
+        # Write data to the file
+
+        current_time = time.time()
+        file.write(str(current_time)+ "\t" + str(time_measured)+"\n")
+
+        # Close the file
+        file.close()
+
         
 
 
@@ -2758,7 +2770,7 @@ class MyMQTTClass(mqtt.Client):
             
             logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(run1_end - run1_start,6)))
             time_measured = str(round(run1_end - run1_start,6))
-            self.writeToFile(time_measured=time_measured)
+            #self.writeToFile(time_measured=time_measured)
 
 
             if (self.authenticated == True):
@@ -2826,8 +2838,9 @@ class MyMQTTClass(mqtt.Client):
 
         run2_end = time.time()
         logger.log(logging.CRITICAL, "SUBSCRIBE RUN TIME: " + str(round(run2_end - run2_start,6)))
+        logger.log(logging.CRITICAL, "SUBSCRIBE START AND SUBSCRIBE END: " + str(round(run2_start,6)) + " " + str(round(run2_end,6)))
         time_measured = str(round(run2_end - run2_start,6))
-        #self.writeToFile(time_measured=time_measured)
+        #self.writeToFile2(time_measured=time_measured)
 
 
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
@@ -3196,7 +3209,11 @@ class MyMQTTClass(mqtt.Client):
                 logger.log(logging.ERROR, "the connection was lost.")
                 return client
         connect_pub_hash_end = time.time()
+
         logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(connect_pub_hash_end - connect_pub_hash_start,6)))
+        time_measured = round(connect_pub_hash_end - connect_pub_hash_start,6)
+        #self.writeToFile(time_measured)
+
         self.fail_to_verify_mac = False
         stop = False
         return client
@@ -3234,7 +3251,10 @@ class MyMQTTClass(mqtt.Client):
 
         self.publish_seeds(client, topicNameList) 
         add_to_hash_session_end = time.time()
+
+        time_measured = round(add_to_hash_session_end - add_to_hash_session_start,6)
         logger.log(logging.CRITICAL, "PUBLISH SEEDS RUN TIME: " + str(round(add_to_hash_session_end - add_to_hash_session_start,6)))
+        #self.writeToFile(time_measured)
             
         return client
 
@@ -3319,7 +3339,11 @@ class MyMQTTClass(mqtt.Client):
         client = await self.run1()
         client2 = await self.topic_hashing_subscriber_step1(client)
         connection_sub_hash_end = time.time()
-        logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(connection_sub_hash_end - connection_sub_hash_start,6)))
+
+        time_measured = round(connection_sub_hash_end - connection_sub_hash_start,6)
+        logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(time_measured))
+        #self.writeToFile(time_measured)
+
         return client
     
     async def start_hash_session(self, client):           #used by publisher
@@ -3412,7 +3436,10 @@ class MyMQTTClass(mqtt.Client):
 
     
         hash_real_subscriber_end = time.time()
-        logger.log(logging.CRITICAL, "HASH TOPIC SUBSCRIBE RUN TIME: " + str(round(hash_real_subscriber_end - hash_real_subscriber_start,6)))
+        time_measured = round(hash_real_subscriber_end - hash_real_subscriber_start,6)
+        logger.log(logging.CRITICAL, "HASH TOPIC SUBSCRIBE RUN TIME: " + str(time_measured))
+        #self.writeToFile(time_measured)
+
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
         
@@ -3423,7 +3450,9 @@ class MyMQTTClass(mqtt.Client):
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return self
+        
         hash_unsub_start = time.time()
+
         self.unsub_success = False
         strconcat = ""
         hash_list = []
@@ -3461,8 +3490,11 @@ class MyMQTTClass(mqtt.Client):
 
         self.received_badmac_unsub = False
         self.fail_to_verify_mac = False
+
         hash_unsub_end = time.time()
         logger.log(logging.CRITICAL, "HASH UNSUBSCRIBE RUN TIME: " + str(round(hash_unsub_end - hash_unsub_start,6)))
+        time_measured = round(hash_unsub_end - hash_unsub_start,6)
+        self.writeToFile(time_measured)
 
         return client
 
