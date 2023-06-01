@@ -667,6 +667,7 @@ class MyMQTTClass(mqtt.Client):
                     self.choice_state_dict[topicName_str] = 2
                 else:
                     #print("The content of the message has been changed. Mac is not correct")
+                    self.fail_to_verify_mac = True
                     logger.log(logging.ERROR, "The content of the message has been changed. Mac is not correct")
 
         client.on_message = on_message
@@ -2836,9 +2837,10 @@ class MyMQTTClass(mqtt.Client):
 
                 #burada fialed to verify maci kontrol et. True ise tekrardan subscribe olma seçeneği gelmeli.
                 stop = False
-                while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
+                while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False and self.fail_to_verify_mac == False):
                         #stop = True
-                        #logger.log(logging.ERROR, " 1295 Bad MAC message received.")
+                        if self.fail_to_verify_mac == True:
+                            logger.log(logging.ERROR, " 1295 Bad MAC message received.")
                         time.sleep(0.1)
                 if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False and self.fail_to_verify_mac == False):
                     self.subscribe_real_topics(client, topicname1) 
@@ -2904,7 +2906,7 @@ class MyMQTTClass(mqtt.Client):
                 while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
                         #stop = True
                         #logger.log(logging.ERROR, " 1295 Bad MAC message received.")
-                        time.sleep(0.1)
+                        time.sleep(0.1)            
                 if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
                     self.subscribe_real_topics(client, topicname1) 
 
