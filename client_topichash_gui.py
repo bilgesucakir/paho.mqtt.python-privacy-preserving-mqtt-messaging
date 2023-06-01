@@ -125,7 +125,7 @@ class MyWindowMqtt:
             subscribed_topics.append(str(elem))
 
         topicname1= self.entry_21.get()
-        #topicname1 = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20"
+        #topicname1 = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20, 21, 22, 23, 24, 25"
         logger.log(logging.INFO, "Topic names received from the gui: "+ topicname1)
         list_topicname = topicname1.split(",")
 

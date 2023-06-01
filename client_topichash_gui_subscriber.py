@@ -93,6 +93,8 @@ class TopicHashingSubscriberWindow:
 
 
     def client_run1(self):
+        if(self.mqttc.disconnect_flag == True):
+            self.base.quit()
 
         self.btn11['state'] = DISABLED
         client = asyncio.run(self.mqttc.connection_for_topic_hashing_subscriber())
