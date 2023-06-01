@@ -29,6 +29,7 @@ class TopicHashingPublisherWindow:
         self.mqttc = mqttc
         self.client = None
         self.label_id = None
+        self.base = base
     
 
         self.btn11 = tk.Button(base, text="Connect",width=10, command = self.client_run1,state=NORMAL)
@@ -130,8 +131,12 @@ class TopicHashingPublisherWindow:
 
     def client_run1(self):
 
+       
+
         self.btn11['state'] = DISABLED
         client = asyncio.run(self.mqttc.connection_for_topic_hashing_publisher())
+        if(self.mqttc.disconnect_flag == True):
+            self.base.quit()
         print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
         self.client = client
         
@@ -257,6 +262,7 @@ class TopicHashingPublisherWindow:
 
             
     def appendToHashSessionTopicsList(self):
+        #received = ["1","2","3","4","5","6","7","8","9","10", "11", "12", "13", "14", "15"]
         received = self.selected_items() 
         hash_session_topics = []
         for i in range(self.listbox2.size()):
@@ -264,6 +270,7 @@ class TopicHashingPublisherWindow:
             elem = self.listbox2.get(i)
             hash_session_topics.append(str(elem))
         self.btn33['state'] = DISABLED
+        
 
 
         list_topicname2 = []

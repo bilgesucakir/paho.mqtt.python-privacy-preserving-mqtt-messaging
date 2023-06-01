@@ -88,7 +88,7 @@ class MyWindowMqtt:
 
 
     def client_run1(self):
-
+      
         
         client = asyncio.run(self.mqttc.run1())
         print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
@@ -114,7 +114,8 @@ class MyWindowMqtt:
                 self.listbox.insert("end", item)
         return True
 
-    def  client_run2(self):
+    def  client_run2(self): 
+        
         if(self.mqttc.disconnect_flag == True):
             self.base.quit()
         subscribed_topics = []
@@ -124,6 +125,7 @@ class MyWindowMqtt:
             subscribed_topics.append(str(elem))
 
         topicname1= self.entry_21.get()
+        #topicname1 = "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20, 21, 22, 23, 24, 25"
         logger.log(logging.INFO, "Topic names received from the gui: "+ topicname1)
         list_topicname = topicname1.split(",")
 

@@ -69,9 +69,6 @@ class MyMQTTClass(mqtt.Client):
         self.choice_state_dict = {}
         self.subscriber_choice_token_session = {}
         self.publisher_choice_token_session = {}
-        self.publish_bad_mac = False
-        self.unsub_bad_mac = False
-        self.sub_bad_mac = False
 
         self.fail_to_verify_mac = False
 
@@ -210,8 +207,8 @@ class MyMQTTClass(mqtt.Client):
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(message)
             signature = h.finalize()
-            #logger.log(logging.INFO, b'Calculated HMAC of SUBACK:' + signature)
-            #logger.log(logging.INFO, b'Received HMAC of SUBACK:' + mac_real)
+            logger.log(logging.INFO, b'Calculated HMAC of SUBACK:' + signature)
+            logger.log(logging.INFO, b'Received HMAC of SUBACK:' + mac_real)
             if (mac_real == signature):
                 logger.log(logging.INFO, "Signature of SUBACK is verified." )
                 
@@ -240,8 +237,8 @@ class MyMQTTClass(mqtt.Client):
         signature = h.finalize()
 
         #logger.log(logging.ERROR, "mac " + str(signature))
-        #logger.log(logging.INFO, b'Calculated HMAC of UNSUBACK:' + signature)
-        #logger.log(logging.INFO, b'Received HMAC of UNSUBACK:' + mac_real)
+        logger.log(logging.INFO, b'Calculated HMAC of UNSUBACK:' + signature)
+        logger.log(logging.INFO, b'Received HMAC of UNSUBACK:' + mac_real)
 
         if (mac_real == signature):
             logger.log(logging.INFO, "Signature of UNSUBACK is verified.")
@@ -300,7 +297,7 @@ class MyMQTTClass(mqtt.Client):
         try:
             client_ID_byte = bytes(self.id_client, 'UTF-8')
             message = self.client_dh_public_key  + b'::::'+ self.nonce1 + b'::::' + client_ID_byte #nonce added
-            #message = self.client_dh_public_key  + b'::::'+ self.nonce1 + b'::::'  #error casess
+
 
             signature = self.client_x509_private_key.sign(
                 message,
@@ -380,8 +377,8 @@ class MyMQTTClass(mqtt.Client):
             signature = h.finalize()
 
             #logger.log(logging.ERROR, "mac " + str(signature))
-            #logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
-            #logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
+            logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
+            logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
 
             if mac_real == signature:
                 logger.log(logging.INFO, "Signature of PUBACK is verified.")
@@ -484,8 +481,8 @@ class MyMQTTClass(mqtt.Client):
             signature = h.finalize()
 
             #logger.log(logging.ERROR, "mac " + str(signature))
-            #logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
-            #logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
+            logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
+            logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
 
             if mac_real == signature:
                 logger.log(logging.INFO, "Signature of PUBACK is verified.")
@@ -500,7 +497,6 @@ class MyMQTTClass(mqtt.Client):
             #print(type(self.client_x509_private_key))
             #print(type(self.session_key))
             message = b'choiceToken'
-            #message2 = b'choiceToken2' # for error cases
 
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(message)
@@ -537,9 +533,8 @@ class MyMQTTClass(mqtt.Client):
 
             messagex = topicname1x + self.id_client + str(qos)+ str(retainFlag) + str(msgid)
             #messagex = topicname1x + self.id_client + str(qos)+ str(retainFlag)  #for error cases
-            #print("messagex:", messagex )
+            print("messagex:", messagex )
             message_byte = force_bytes(messagex)
-            logger.log(logging.INFO, b'Message bytes: '+ message_byte)
 
 
 
@@ -561,15 +556,14 @@ class MyMQTTClass(mqtt.Client):
 
 
             payload = topicWanted + b'::::' + signature
-            logger.log(logging.INFO, b'Payload: '+ payload)
             encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
             padded_data = padder.update(payload) + padder.finalize()
             payloadByte = encryptor.update(padded_data) + encryptor.finalize()
             
-            #logger.log(logging.INFO, "Authenticated encryption version of the topic name 'choiceToken': " + topicNameEncryptedHex)
-            logger.log(logging.INFO, b'Payload contains the authenticated encryption version of the topic name for which a choice token is asked: '+ topicWanted)
-            #logger.log(logging.INFO, b'Authenticated encryption version of the payload: ' + payloadByte)
+            logger.log(logging.INFO, "Authenticated encryption version of the topic name 'choiceToken': " + topicNameEncryptedHex)
+            logger.log(logging.INFO, b'Payload contains the topic name for which a choice token is asked: '+ topicWanted)
+            logger.log(logging.INFO, b'Authenticated encryption version of the payload: ' + payloadByte)
 
 
 
@@ -599,7 +593,7 @@ class MyMQTTClass(mqtt.Client):
             data_len = data[0:2]
             actual_data = data[2:]
          
-            #logger.log(logging.INFO, b'Encrypted data: '+ actual_data )
+            logger.log(logging.INFO, b'Encrypted data: '+ actual_data )
 
             backend = default_backend()
             decryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).decryptor()
@@ -626,8 +620,10 @@ class MyMQTTClass(mqtt.Client):
             #bilgesu: modification
             if topic_and_choiceTokens == to_check:
                 self.fail_to_verify_mac = True
-                logger.log(logging.ERROR, " Received signVerifyFailed from broker, wont get choicetoken")
-                return client
+                logger.log(logging.ERROR, "Received signVerifyFailed from broker, wont get choicetoken.")
+
+
+
 
 
             else:
@@ -639,11 +635,11 @@ class MyMQTTClass(mqtt.Client):
                 else:
                     retainFlag = False
                 message_str = str(msg.qos) + str(retainFlag) + str(msg.mid)
-                #message_str = str(msg.qos) + str(retainFlag)    #for error cases
                 message_bytes = topic_and_choiceTokens + force_bytes(message_str)
                 print("message_bytes: ", message_bytes)
 
-               
+                logger.log(logging.INFO, b'Topic name: '+ topicName )
+                logger.log(logging.INFO, "Its choiceToken: " + choiceToken.hex())
                 h = hmac.HMAC(self.session_key, hashes.SHA256())
                 h.update(message_bytes)
                 signature = h.finalize()
@@ -661,8 +657,6 @@ class MyMQTTClass(mqtt.Client):
                     #print("choicetoken 367: ", choiceToken)
 
                     choiceTokenHex = choiceToken.hex()
-                    logger.log(logging.INFO, b'Topic name: '+ topicName )
-                    logger.log(logging.INFO, "Its choiceToken: " + choiceToken.hex())
 
                     #print("choicetokenhex  371:", choiceTokenHex)
 
@@ -672,7 +666,6 @@ class MyMQTTClass(mqtt.Client):
                     self.choice_state_dict[topicName_str] = 2
                 else:
                     #print("The content of the message has been changed. Mac is not correct")
-                    self.fail_to_verify_mac = True
                     logger.log(logging.ERROR, "The content of the message has been changed. Mac is not correct")
 
         client.on_message = on_message
@@ -886,7 +879,7 @@ class MyMQTTClass(mqtt.Client):
         def on_unsubscribe(self, obj, mid):
 
             packet_bytes = client.get_packet_bytes()
-            logger.log(logging.INFO, "Unsuback was received, message Id:subscribe4 " + str(mid))
+            logger.log(logging.INFO, "Unsuback was received, message Id: " + str(mid))
 
             #logger.log(logging.ERROR, "mac " + str(packet_bytes))
 
@@ -902,8 +895,8 @@ class MyMQTTClass(mqtt.Client):
             signature = h.finalize()
 
             #logger.log(logging.ERROR, "mac " + str(signature))
-            #logger.log(logging.INFO, b'Calculated HMAC of UNSUBACK:' + signature)
-            #logger.log(logging.INFO, b'Received HMAC of UNSUBACK:' + mac_real)
+            logger.log(logging.INFO, b'Calculated HMAC of UNSUBACK:' + signature)
+            logger.log(logging.INFO, b'Received HMAC of UNSUBACK:' + mac_real)
 
             if (mac_real == signature):
                 logger.log(logging.INFO, "Signature of UNSUBACK is verified.")
@@ -918,9 +911,6 @@ class MyMQTTClass(mqtt.Client):
 
     def subscribe4(self, client: mqtt, is_after_publish:bool, is_unsub:bool):
         def on_message(client, userdata, msg):
-
-            receive_publish_time = time.time()
-
             #print("----Publish message was received from broker")
             #print(f"Encrypted payload: `{msg.payload}` from  encrypted topic: `{msg.topic}` ")
             logger.log(logging.INFO, "----Publish message was received from broker")
@@ -971,18 +961,16 @@ class MyMQTTClass(mqtt.Client):
 
                     self.fail_to_verify_mac = True
                     if is_after_publish:
-                        #logger.log(logging.ERROR, "Received bad MAC, your published message won't be relayed to the subscribers.")
-                        logger.log(logging.ERROR, "Received bad MAC message from broker")
-                        #print("Received bad MAC, your published message won't be relayed to the subscribers.")
+                        logger.log(logging.ERROR, "Received bad MAC, your published message won't be relayed to the subscribers.")
+                        print("Received bad MAC, your published message won't be relayed to the subscribers.")
                     else:
                         if is_unsub:
+
                             self.received_badmac_unsub = True
-                            #logger.log(logging.ERROR, "Received bad MAC, unsubscribe request failed.")
-                            logger.log(logging.ERROR, "Received bad MAC message from broker")
+                            logger.log(logging.ERROR, "Received bad MAC, unsubscribe request failed.")
                             print("Received bad MAC, unsubscribe request failed.")
-                        
                         else:
-                            logger.log(logging.ERROR, "Received bad MAC message from broker")
+                            logger.log(logging.ERROR, "Received bac MAC")
                             print("Received bac MAC")
                 
                 elif piece_1 == b'wildcardChoiceToken':
@@ -1062,7 +1050,6 @@ class MyMQTTClass(mqtt.Client):
 
                     message_hash_str = str(msg.qos) + str(retainFlag) + str(msg.mid)
                     message_bytes_hash = message_encrypted_with_ct + force_bytes(message_hash_str)
-                    #message_bytes_hash = message_encrypted_with_ct #for error cases
                     print("message_hash_str ", message_hash_str)
                     print("message_bytes_hash ", message_bytes_hash)
 
@@ -1081,12 +1068,7 @@ class MyMQTTClass(mqtt.Client):
                         logger.log(logging.WARNING, b'Message after decryption with choice token: '+ unpadded_message)
                         #print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
 
-                        publish_receive_time_2 = time.time()
 
-                        time_measured = str(round(publish_receive_time_2 - receive_publish_time,6))
-                        #self.writeToFile(time_measured=time_measured)
-
-                        logger.log(logging.CRITICAL, "PUBLISH RECEIVED DECRYPT TOTAL TIME: " + str(round(publish_receive_time_2 - receive_publish_time,6)))
 
                     else:
                         #print("The content of the payload is changed, Mac of the payload is not correct")
@@ -1095,7 +1077,7 @@ class MyMQTTClass(mqtt.Client):
 
                 else:
                     #print("The content of the topic name is changed. Mac of the topic name is correct")
-                    logger.log(logging.ERROR, "The content of the topic name is changed. Mac of the topic name is not correct")
+                    logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct")
 
 
 
@@ -1198,7 +1180,6 @@ class MyMQTTClass(mqtt.Client):
                     logger.log(logging.INFO, "1137 Broker disconnects you due to nonce verification error")
                     #not auth received from broker
                     self._dontreconnect = True
-                    self.disconnect_flag = True   
                     return client
                     
                 backend = default_backend()
@@ -1228,17 +1209,31 @@ class MyMQTTClass(mqtt.Client):
                 comming_client_id_orNotAuth = unpadded[index1+4:]
 
 
-                
-                self.nonce2 = comming_nonce2_or_clientId #set nonce2
-                self.comming_client_id = comming_client_id_orNotAuth
+                if(bytes.decode(comming_nonce2_or_clientId,"utf-8") == self.id_client and comming_client_id_orNotAuth == b'notAuthenticated'):
+                    #print("Broker disconnect you due to RSA or nonce verification error")
+                    logger.log(logging.INFO, "Broker disconnects you due nonce verification error at DH step 8")
 
-                #print("Nonce 2 received:", comming_nonce2_or_clientId)
-                #print("Client ID received:", comming_client_id_orNotAuth)
-                logger.log(logging.INFO, b'Nonce 2 received: ' + comming_nonce2_or_clientId)
+                    #not auth received from broker
 
-                logger.log(logging.INFO, b'Client ID received: ' + comming_client_id_orNotAuth)
+                    self._dontreconnect = True
+                    self.disconnect_flag = True
 
-                #print(self.id_client)
+                    self.disconnect()
+
+
+
+
+                else:
+                    self.nonce2 = comming_nonce2_or_clientId #set nonce2
+                    self.comming_client_id = comming_client_id_orNotAuth
+
+                    #print("Nonce 2 received:", comming_nonce2_or_clientId)
+                    #print("Client ID received:", comming_client_id_orNotAuth)
+                    logger.log(logging.INFO, b'Nonce 2 received: ' + comming_nonce2_or_clientId)
+
+                    logger.log(logging.INFO, b'Client ID received: ' + comming_client_id_orNotAuth)
+
+                    #print(self.id_client)
 
 
 
@@ -1396,7 +1391,6 @@ class MyMQTTClass(mqtt.Client):
         logger.log(logging.INFO, "Unsubscribe List : "+ encrypted_hex)
         return return_list
     
-    
 
     def subscribe_for_topic_hashing(self, client: mqtt, topicname):
         def on_message(client, userdata, msg):
@@ -1506,7 +1500,7 @@ class MyMQTTClass(mqtt.Client):
         if(self.choice_state_dict[topicname] == 2):
 
             
-            logger.log(logging.WARNING, "----Function to subscribe to topic: "+ topicname )
+            logger.log(logging.INFO, "----Function to subscribe to topic: "+ topicname )
             topicName_byte = force_bytes(topicname)
             msgid = self._mid_generate()
             print("before msgid sub", msgid)
@@ -1566,8 +1560,8 @@ class MyMQTTClass(mqtt.Client):
             signature = h.finalize()
 
             #logger.log(logging.ERROR, "mac " + str(signature))
-            #logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
-            #logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
+            logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
+            logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
 
             if mac_real == signature:
                 logger.log(logging.INFO, "Signature of PUBACK is verified.")
@@ -1578,7 +1572,7 @@ class MyMQTTClass(mqtt.Client):
         client.on_publish = on_publish
         #print("----Function to publish to topic: ", topicName )
         #print("Message to be published: ", message)
-        logger.log(logging.WARNING, "----Function to publish to topic: " + topicName )
+        logger.log(logging.INFO, "----Function to publish to topic: " + topicName )
         message = str(self._client_id)
 
         topicName_byte = force_bytes(topicName)
@@ -1810,7 +1804,7 @@ class MyMQTTClass(mqtt.Client):
         if(self.subscribe_success_topic_hash == 1):
 
             #print("----Function to subscribe to topic: ", topicname )
-            logger.log(logging.WARNING, "----Function to subscribe to topic: "+ topicname )
+            logger.log(logging.INFO, "----Function to subscribe to topic: "+ topicname )
             topicName_byte = force_bytes(topicname)
             msgid = self._mid_generate()
             print("before msgid sub", msgid)
@@ -1868,8 +1862,8 @@ class MyMQTTClass(mqtt.Client):
             signature = h.finalize()
 
             #logger.log(logging.ERROR, "mac " + str(signature))
-            #logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
-            #logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
+            logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
+            logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
 
             if mac_real == signature:
                 logger.log(logging.INFO, "Signature of PUBACK is verified.")
@@ -1913,7 +1907,6 @@ class MyMQTTClass(mqtt.Client):
         self.polynomials.append(digits[1])
         self.polynomials.append(digits[0])
         topicName_byte = force_bytes(topicName)
-        
         choiceTokenhex = self.choiceTokenDictionary[topicName]
         choiceToken = unhexlify(choiceTokenhex)
     
@@ -2009,8 +2002,8 @@ class MyMQTTClass(mqtt.Client):
             signature = h.finalize()
 
             #logger.log(logging.ERROR, "mac " + str(signature))
-            #logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
-            #logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
+            logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
+            logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
 
             if mac_real == signature:
                 logger.log(logging.INFO, "Signature of PUBACK is verified.")
@@ -2106,8 +2099,8 @@ class MyMQTTClass(mqtt.Client):
             h = hmac.HMAC(self.session_key, hashes.SHA256())
             h.update(message)
             signature = h.finalize()
-            #logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
-            #logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
+            logger.log(logging.INFO, b'Calculated HMAC of PUBACK:' + signature)
+            logger.log(logging.INFO, b'Received HMAC of PUBACK:' + mac_real)
             if mac_real == signature:
                 logger.log(logging.INFO, "Signature of PUBACK is verified.")
             else:
@@ -2241,7 +2234,6 @@ class MyMQTTClass(mqtt.Client):
                 #print("Message after authenticated encyption with the session key: ", encrypted_message2)
                 logger.log(logging.INFO, b'Message after authenticated encyption with the session key: '+ encrypted_message2)
                 client.publish(encrypted_topic_hex, encrypted_message2 , qos = qos, retain = retainFlag, msgid=msgid)
-                logger.log(logging.INFO, "Publish message was sent")
 
         salt_poly = self.polynomial_func(self.count,self.polynomials[0],self.polynomials[1],self.polynomials[2],self.polynomials[3])
         salt_poly = str(salt_poly)
@@ -2249,7 +2241,7 @@ class MyMQTTClass(mqtt.Client):
         self.count +=1
         
         for topic, topicHash in self.topicname_hash_dictionary.items():
-            logger.log(logging.INFO, "Topic names: " + topic + ", and its old hash value: " + topicHash )
+            logger.log(logging.WARNING, "Topic names: " + topic + ", and its old hash value: " + topicHash )
             dk = hashlib.pbkdf2_hmac('sha512', topicHash.encode(), salt_poly.encode(), 100000)
             self.topicname_hash_dictionary[topic] = dk.hex()
             logger.log(logging.WARNING, "Topic names: " + topic + ", and its new hash value: " + dk.hex() )
@@ -2259,7 +2251,7 @@ class MyMQTTClass(mqtt.Client):
     def real_topic_hash_subscribe(self, client: mqtt, topicname):
         def on_message(client, userdata, msg):
            
-            logger.log(logging.INFO, "---Publish message was received from broker")
+            logger.log(logging.INFO, "--- 2060 -Publish message was received from broker")
             data = msg.payload
             actual_data = data[2:]
           
@@ -2314,7 +2306,6 @@ class MyMQTTClass(mqtt.Client):
 
                     message_encrypted_with_ct = unpadded[0:index1]
                     mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
-                    logger.log(logging.INFO, "Topic name: "+  topic_name_str)
                 
                     logger.log(logging.INFO, b'Message after decryption with session key: '+ message_encrypted_with_ct)
 
@@ -2326,7 +2317,7 @@ class MyMQTTClass(mqtt.Client):
                     decrypted_data2 = decryptor.update(message_encrypted_with_ct)
                     unpadded_message = padder.update(decrypted_data2) + padder.finalize()
                     
-                    
+                    logger.log(logging.INFO, "Topic name: "+  topic_name_str)
 
                     if msg.retain == 0:
                         retainFlag = False
@@ -2362,7 +2353,7 @@ class MyMQTTClass(mqtt.Client):
                         topic_list = unpadded_message[0:index_of_polynomial]
                         polynomial = unpadded_message[index_of_polynomial+4:]
                         polynomial = bytes.decode(polynomial, 'utf-8')
-                        logger.log(logging.INFO, "Polynomial: " + polynomial)
+                        logger.log(logging.INFO, "polynomial " + polynomial)
                         poly_list = polynomial.split(",")
                         
                         self.poly_list = poly_list
@@ -2380,7 +2371,7 @@ class MyMQTTClass(mqtt.Client):
                             self.count_dictionary[topic_name_str] = 1
                             salt_poly = self.polynomial_func(self.count_dictionary[topic_name_str],int(poly_list[0]),int(poly_list[1]),int(poly_list[2]),int(poly_list[3]))
                             salt_poly = str(salt_poly)
-                            logger.log(logging.WARNING, "Salt Polynomial: " + salt_poly + " and its count: " + str(self.count_dictionary[topic_name_str]) + " and its topic name:" + topic_name_str )
+                            logger.log(logging.WARNING, "salt_poly: " + salt_poly + " and its count: " + str(self.count_dictionary[topic_name_str]) + " and it topic name:" + topic_name_str )
                             
                             dk = hashlib.pbkdf2_hmac('sha512', seed_str.encode(), salt_poly.encode(), 100000)
                             dk2 = dk.hex()
@@ -2413,9 +2404,9 @@ class MyMQTTClass(mqtt.Client):
                 xbool = False
                 seed_dictionary = self.seed_dictionary
             
-                #logger.log(logging.ERROR, seed_dictionary)
+                logger.log(logging.ERROR, seed_dictionary)
                 topic_hash_dictionary = self.topic_hash_dictionary
-                #logger.log(logging.ERROR, topic_hash_dictionary)
+                logger.log(logging.ERROR, topic_hash_dictionary)
                 hash_topic_dictionary = self.hash_topic_dictionary
                    
                 topic_real = hash_topic_dictionary.get(topic_name_str, "")
@@ -2424,8 +2415,8 @@ class MyMQTTClass(mqtt.Client):
                     xbool = True
                  
                        
-                logger.log(logging.WARNING,"Real topic name: " + topic_real)
-                logger.log(logging.WARNING,"Its corresponding hash value: " + topic_name_str)
+                logger.log(logging.WARNING,"topic_real" + topic_real)
+                logger.log(logging.WARNING,"topic_hash" + topic_name_str)
             
                 if (xbool == False):
                         logger.log(logging.ERROR,"There is no topic name for this hash")
@@ -2449,8 +2440,8 @@ class MyMQTTClass(mqtt.Client):
                     logger.log(logging.INFO, "The content of the topic name is not changed. Mac of the topic name is correct.")
 
 
-                    #logger.log(logging.INFO, b'Decrypted topic name: ' + topic_name + b' and its mac: ' + mac_of_topic_name)
-                    #logger.log(logging.INFO, "Choice token of the topic: "+ choiceTokenhex )
+                    logger.log(logging.INFO, b'Decrypted topic name: ' + topic_name + b' and its mac: ' + mac_of_topic_name)
+                    logger.log(logging.INFO, "Choice token of the topic: "+ choiceTokenhex )
 
                     data = msg.payload
                     data_len = data[0:2]
@@ -2465,7 +2456,7 @@ class MyMQTTClass(mqtt.Client):
                     message_encrypted_with_ct = unpadded[0:index1]
                     mac_of_payload = unpadded[index1+4:]    #change mac of payload after update
                     #print("Message after decryption with session key: ", message_encrypted_with_ct)
-                    #logger.log(logging.INFO, b'Message after decryption with session key: '+ message_encrypted_with_ct)
+                    logger.log(logging.INFO, b'Message after decryption with session key: '+ message_encrypted_with_ct)
 
                     choicetoken_key = force_bytes(base64.urlsafe_b64encode(force_bytes(choiceToken))[:32])
                     #print("Choicetoken key: ", choicetoken_key)
@@ -2475,10 +2466,10 @@ class MyMQTTClass(mqtt.Client):
                     
                     polynomials = self.poly_list
                     
-                    #logger.log(logging.WARNING, "counter value: " + str(self.count_dictionary[topic_real])  + " and its topic name:" + topic_real )
+                    logger.log(logging.WARNING, "counter value: " + str(self.count_dictionary[topic_real])  + " and its topic name:" + topic_real )
                     salt_poly = self.polynomial_func(self.count_dictionary[topic_real],int(polynomials[0]),int(polynomials[1]),int(polynomials[2]),int(polynomials[3]))
                     salt_poly = str(salt_poly)
-                    logger.log(logging.WARNING, "Salt polynomial: " + salt_poly + ", and counter value: " + str(self.count_dictionary[topic_real])  + " and its topic name:" + topic_real )
+                    logger.log(logging.WARNING, "salt_poly: " + salt_poly + ", and counter value: " + str(self.count_dictionary[topic_real])  + " and its topic name:" + topic_real )
 
                    
                     self.seed_dictionary[topic_real] = topic_name_str
@@ -2487,7 +2478,7 @@ class MyMQTTClass(mqtt.Client):
                     self.hash_topic_dictionary[dk.hex()] = topic_real
                     self.topic_hash_dictionary[topic_real] = dk.hex()
                     self.count_dictionary[topic_real] +=1
-                    logger.log(logging.WARNING, "Real topic name: " + topic_real + " and its next hash value: " + dk.hex())
+                    logger.log(logging.WARNING, "Real topic name: " + topic_real + ", and its previous hash: " + topic_name_str  + " and its current hash:" + dk.hex())
                     
                    
                     topicName_byte = force_bytes(dk.hex())
@@ -2504,7 +2495,7 @@ class MyMQTTClass(mqtt.Client):
                     h.update(hash_bytes)
                     signature = h.finalize()
                     #print("MAC of the topic: ", signature )
-                    #logger.log(logging.INFO, b'MAC of the topic: '+ signature )
+                    logger.log(logging.INFO, b'MAC of the topic: '+ signature )
 
 
                     topicName_subscribe = topicName_byte + b'::::' + signature
@@ -2516,15 +2507,14 @@ class MyMQTTClass(mqtt.Client):
                     topicNameEncryptedByte = encryptor.update(padded_data) + encryptor.finalize()
                     topicNameEncryptedHex = topicNameEncryptedByte.hex()
                     #print("Authenticated encryption version of the topic:" ,topicNameEncryptedHex )
-                    logger.log(logging.INFO, "Authenticated encryption version of the next hash topic: " + topicNameEncryptedHex )
+                    logger.log(logging.INFO, "Authenticated encryption version of the topic:" + topicNameEncryptedHex )
 
                 
                     client.subscribe(topicNameEncryptedHex, qos=qos, msgid = msgid)
                     #print("Subscribed to: " ,topicNameEncryptedHex )
-                    logger.log(logging.INFO, "Subscribed to authenticated encryption version of the next hash value: " + topicNameEncryptedHex )
+                    logger.log(logging.INFO, "Subscribed to: " + topicNameEncryptedHex )
                     send_to_unsub= self.encrypt_mac_one_topic_name(topic_name_str)
                     client.unsubscribe(send_to_unsub)
-                    logger.log(logging.INFO, "Unsubscribed to authenticated encryption version of the current hash value: " + send_to_unsub )
                     
 
 
@@ -2537,7 +2527,7 @@ class MyMQTTClass(mqtt.Client):
                         padder = padding2.PKCS7(algorithms.AES(choicetoken_key).block_size).unpadder()
                         decrypted_data2 = decryptor.update(message_encrypted_with_ct)
                         unpadded_message = padder.update(decrypted_data2) + padder.finalize()
-                        logger.log(logging.ERROR, "MESSAGE IS DECRYPTED WITH THE CHOICE TOKEN")
+                        logger.log(logging.WARNING, "Message is decrypted with choice token.")
                         
                     except:
                         logger.log(logging.ERROR, "CHOICE TOKEN KEY IS WRONG")
@@ -2566,7 +2556,7 @@ class MyMQTTClass(mqtt.Client):
                         #print("MESSAGE: " ,unpadded_message, "FROM ", topic_namepub )
 
                         logger.log(logging.ERROR, b'Message after decryption with choice token: '+ unpadded_message)
-                        #logger.log(logging.INFO, "Topic name: "+  topic_name_str)
+                        logger.log(logging.INFO, "Topic name: "+  topic_name_str)
 
 
                     else:
@@ -2582,12 +2572,13 @@ class MyMQTTClass(mqtt.Client):
         if(self.choice_state_dict[topicname] == 2):
             self.topic_hashing_clear = False
             #print("----Function to subscribe to topic: ", topicname )
-            
+            logger.log(logging.INFO, "----Function to subscribe to topic: "+ topicname )
            
             seed = self.seed_dictionary[topicname]
             hash = self.topic_hash_dictionary[topicname]
-            logger.log(logging.WARNING,"Corresponding seed value:" + seed)
-            logger.log(logging.WARNING,"Corresponding hash value:" + hash)
+            logger.log(logging.WARNING,"topic:" + topicname)
+            logger.log(logging.WARNING,"seed:" + seed)
+            logger.log(logging.WARNING,"hash:" + hash)
 
             topicName_byte = force_bytes(hash)
             
@@ -2632,7 +2623,7 @@ class MyMQTTClass(mqtt.Client):
     
    
     def writeToFile(self, time_measured):
-        file_path = "runs.txt"
+        file_path = "connect.txt"
         file = open(file_path, "a")
 
         # Write data to the file
@@ -2643,32 +2634,7 @@ class MyMQTTClass(mqtt.Client):
         # Close the file
         file.close()
 
-    
-
-    def writeToFile2(self, time_measured):
-        file_path = "publish_seeds_15Topics.txt"
-        file = open(file_path, "a")
-
-        # Write data to the file
-
-        current_time = time.time()
-        file.write(str(current_time)+ "\t" + str(time_measured)+"\n")
-
-        # Close the file
-        file.close()
-
-    def writeToFile3(self, time_measured):
-        file_path = "publish_topicHash_15Topics.txt"
-        file = open(file_path, "a")
-
-        # Write data to the file
-
-        current_time = time.time()
-        file.write(str(current_time)+ "\t" + str(time_measured)+"\n")
-
-        # Close the file
-        file.close()
-    
+        
 
 
     async def run1(self):
@@ -2718,12 +2684,12 @@ class MyMQTTClass(mqtt.Client):
 
         stopWhile = False
 
-        while (self.comming_client_id == None and stopWhile == False and self.disconnect_flag == False):
+        while (self.comming_client_id == None and stopWhile == False):
             time.sleep(0.1)
             if(self._dontreconnect == True):
+                logger.log(logging.INFO, "2482")
                 self.disconnect_flag = True
                 stopWhile = True
-                return client
 
         if self.comming_client_id != None:
             incomingClientIdByte = self.comming_client_id
@@ -2736,7 +2702,6 @@ class MyMQTTClass(mqtt.Client):
                 logger.log(logging.INFO, "The id received from the broker at step 8 is different than the client ID")
                 self.disconnect_flag = True
                 self.disconnect()
-                return client
 
         while self.key_establishment_state != 8:
             time.sleep(0.1)
@@ -2745,6 +2710,7 @@ class MyMQTTClass(mqtt.Client):
             self.publish_step9(client)
 
         stopWhile = False
+        print(2487)
 
         while self.key_establishment_state != 10:
             time.sleep(0.1)
@@ -2783,15 +2749,15 @@ class MyMQTTClass(mqtt.Client):
             
             #logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(run1_end - run1_start,6)))
             time_measured = str(round(run1_end - run1_start,6))
-            #self.writeToFile(time_measured=time_measured)
-
-
+            self.writeToFile(time_measured=time_measured)
             if (self.authenticated == True):
                 return client
             else:
                 self.disconnect_flag = True
                 self.disconnect()
                 return -1
+       
+            
       
 
     async def run2(self,client,topicname_list):
@@ -2833,13 +2799,11 @@ class MyMQTTClass(mqtt.Client):
 
                 #burada fialed to verify maci kontrol et. True ise tekrardan subscribe olma seçeneği gelmeli.
                 stop = False
-                while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False and self.fail_to_verify_mac == False):
+                while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
                         #stop = True
-                        if self.fail_to_verify_mac == True:
-                            logger.log(logging.ERROR, " 1295 Bad MAC message received.")
+                        #logger.log(logging.ERROR, " 1295 Bad MAC message received.")
                         time.sleep(0.1)
-                self.fail_to_verify_mac = False
-                if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False ):
+                if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False and self.fail_to_verify_mac == False):
                     self.subscribe_real_topics(client, topicname1) 
 
             #modification
@@ -2849,17 +2813,9 @@ class MyMQTTClass(mqtt.Client):
 
         #modification
         self.unverified_suback_topics_list = list_failed_suback
-
-
         run2_end = time.time()
         logger.log(logging.CRITICAL, "SUBSCRIBE RUN TIME: " + str(round(run2_end - run2_start,6)))
-        logger.log(logging.CRITICAL, "SUBSCRIBE START AND SUBSCRIBE END: " + str(round(run2_start,6)) + " " + str(round(run2_end,6)))
-        time_measured = str(round(run2_end - run2_start,6))
-        #self.writeToFile2(time_measured=time_measured)
-
-
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
-            self.sub_bad_mac = True
             self.subscribe4(client, False, False)
 
         if (self.disconnect_flag == True):
@@ -2905,7 +2861,7 @@ class MyMQTTClass(mqtt.Client):
                 while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
                         #stop = True
                         #logger.log(logging.ERROR, " 1295 Bad MAC message received.")
-                        time.sleep(0.1)            
+                        time.sleep(0.1)
                 if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
                     self.subscribe_real_topics(client, topicname1) 
 
@@ -2932,9 +2888,7 @@ class MyMQTTClass(mqtt.Client):
             #print("Message received from the gui:", message)
             logger.log(logging.INFO,"Topic name received from the gui:"+ topicname1)
             logger.log(logging.INFO, "Message received from the gui:"+ message)
-
             run3_start = time.time()
-
             if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname1] = 0
                 self.publishForChoiceToken(client,topicname1)
@@ -2944,17 +2898,17 @@ class MyMQTTClass(mqtt.Client):
             if (self.choice_state_dict[topicname1] == 1 and self.disconnect_flag == False):
                 self.subscribe_encrypted_clientID(client, self.id_client)
 
-            
-            while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and  self.fail_to_verify_mac == False):
-                if self.fail_to_verify_mac == True:
-                    logger.log(logging.ERROR, " 1295 Bad MAC message received.")
+            stop = False
+            while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
+                if(self.fail_to_verify_mac):
+                    stop = True
                 time.sleep(0.1)
-            self.fail_to_verify_mac = False
+
             if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
                 self.publish_real_topics(client, topicname1, message)
 
             run3_end = time.time()
-            logger.log(logging.CRITICAL, "PUBLISH RUN TIME: " + str(round(run3_end - run3_start,6)))
+            #logger.log(logging.CRITICAL, "PUBLISH RUN TIME: " + str(round(run3_end - run3_start,6)))
             if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
                 self.subscribe4(client, True, False)
 
@@ -2968,7 +2922,6 @@ class MyMQTTClass(mqtt.Client):
        
 
     async def run4(self, client, selected_topics_list):
-
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return self
@@ -2990,7 +2943,7 @@ class MyMQTTClass(mqtt.Client):
 
         if self.disconnect_flag == False and len(send_to_unsub_list) > 0:
             client.unsubscribe(send_to_unsub_list)
-            logger.log(logging.INFO, "Unsubsrcibe to: "+ str(send_to_unsub_list))
+            logger.log(logging.INFO, "Unsubscribe to: "+ str(send_to_unsub_list))
 
         if self.disconnect_flag == False:
             bool_false = False
@@ -3006,7 +2959,7 @@ class MyMQTTClass(mqtt.Client):
             time.sleep(0.1)
 
         run4_end = time.time()
-        logger.log(logging.CRITICAL, "UNSUBSCRIBE RUN TIME: " + str(round(run4_end - run4_start,6)))
+        #logger.log(logging.CRITICAL, "UNSUBSCRIBE RUN TIME: " + str(round(run4_end - run4_start,6)))
         if self.received_badmac_unsub == False:
             self.unsub_success = True
 
@@ -3056,7 +3009,107 @@ class MyMQTTClass(mqtt.Client):
 
     async def connection_for_topic_hashing_publisher(self):   #used by publisher
         connect_pub_hash_start = time.time()
-        client = await self.run1()
+        id_client = str(random.randint(0, 100000000))
+        self.id_client = id_client
+        self.cert_read_fnc()
+        #print("CLIENT ID: " , id_client)
+        logger.log(logging.INFO, "CLIENT ID: " + id_client)
+        client = self.connect_mqtt(id_client)
+
+        client.loop_start()
+
+        while self.key_establishment_state != 2:
+            time.sleep(0.1)
+        if self.key_establishment_state == 2:
+            await self.subscribe_clientID(client, id_client)
+        #print("211", self.key_establishment_state)
+        while self.key_establishment_state != 5:
+            time.sleep(0.1)
+
+        #print("215", self.key_establishment_state)
+        if self.key_establishment_state == 5:
+            self.publish_step6(client)
+            dh_shared = self.client_diffiehellman.generate_shared_key(self.broker_dh_public_key)
+
+            self.dh_shared_key = dh_shared
+        #print("221", self.key_establishment_state)
+        #print("SHARED DH KEY: ",self.dh_shared_key)
+        logger.log(logging.INFO, b'SHARED DH KEY: ' + self.dh_shared_key)
+
+        sessionkey = force_bytes(base64.urlsafe_b64encode(force_bytes(self.dh_shared_key))[:32])
+        self.session_key = sessionkey
+        #print("SESSION KEY DERIVED FROM THE DH SHARED KEY: ", self.session_key )
+        logger.log(logging.INFO, b'SESSION KEY DERIVED FROM THE DH SHARED KEY: ' + self.session_key)
+
+
+        while self.key_establishment_state != 7 and self.session_key == None:
+            time.sleep(0.1)
+        if self.key_establishment_state == 7:
+            await self.subscribe_clientID(client, id_client)  #take the publish message from broker at step 8
+
+
+        while self.comming_client_id == None:
+            time.sleep(0.1)
+        if self.comming_client_id != None:
+            incomingClientIdByte = self.comming_client_id
+            #print(type(incomingClientIdByte))
+            #print(type(self.id_client))
+            if (bytes.decode(incomingClientIdByte, 'utf-8') == self.id_client ):
+                self.key_establishment_state = 8
+                #print("The id received from the broker at step 8 is same as the client ID")
+                logger.log(logging.INFO, "The id received from the broker at step 8 is same as the client ID")
+                #print("Message encrypted with ")
+                #print(self.key_establishment_state)
+            else:
+                #print("The id received from the broker at step 8 is different than the client ID")
+                logger.log(logging.INFO, "The id received from the broker at step 8 is different than the client ID")
+                self.disconnect_flag = True
+                self.disconnect()
+
+        while self.key_establishment_state != 8:
+            time.sleep(0.1)
+
+        if self.key_establishment_state == 8:
+            #print("state 8")
+            self.publish_step9(client)
+
+        stopWhile = False #bilgesu modification
+
+        while self.key_establishment_state != 10:
+            time.sleep(0.1)
+        if self.key_establishment_state == 10:
+
+            #logger.log(logging.INFO, "SELF.KEY_ESTABLSIHMENT_STATE IS 10")
+
+            #print("STATE 10")
+            await self.subscribe_clientID(client, id_client)
+
+            while (self.authenticated == False and stopWhile == False): #bilgesu modification
+                time.sleep(0.1)
+
+                if(self._dontreconnect == True): #bilgesu modification
+
+                    #logger.log(logging.INFO, "SELF._DONTRECONNECT IS TRUE")
+                    logger.log(logging.INFO, "BROKER DISCONNECTS YOU BECAUSE IT CANNOT AUTHENTICATE YOU")
+                    
+
+                    self.disconnect_flag = True
+                    stopWhile = True
+
+            if (self.authenticated == True):
+                #print("authenticated true")
+
+                #logger.log(logging.INFO, "SELF.AUTH IS TRUE")
+
+
+                self.subscribe_encrypted_clientID(client, id_client)
+                self.choice_token_state = 1
+            #else:
+                #logger.log(logging.INFO, "SELF.AUTH IS NOT EQUAL TO TRUE")
+
+        if (self.disconnect_flag == True):
+            logger.log(logging.ERROR, "the connection was lost.")
+            return self
         self.publish_topic_hash = [] 
 
         self.fail_to_verify_mac = False
@@ -3073,18 +3126,9 @@ class MyMQTTClass(mqtt.Client):
                 #if signVErifyFailed received do not send
                 self.subscribe_encrypted_clientID(client, self.id_client)
                 stop = False
-   
-        while (self.choice_state_dict[topicname_hashing] != 2 and self.disconnect_flag == False and  self.fail_to_verify_mac == False):
+        while (self.choice_state_dict[topicname_hashing] != 2 and self.disconnect_flag == False and stop == False):
                 time.sleep(0.1)
         
-        if self.fail_to_verify_mac == True:
-                logger.log(logging.ERROR, 3079)
-                logger.log(logging.ERROR, " Bad MAC message received.")
-                self.disconnect_flag = True
-                self.disconnect()
-                return client
-
-        self.fail_to_verify_mac = False
         
         
 
@@ -3101,20 +3145,16 @@ class MyMQTTClass(mqtt.Client):
                 self.subscribe_encrypted_clientID(client, self.id_client)
 
         stop = False
-        while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and  self.fail_to_verify_mac == False):
+        while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
+                if(self.fail_to_verify_mac):
+                    stop = True
                 time.sleep(0.1)
-        if self.fail_to_verify_mac == True:
-                logger.log(logging.ERROR, 3079)
-                logger.log(logging.ERROR, " Bad MAC message received.")
-                self.disconnect_flag = True
-                self.disconnect()
-                return client
-        self.fail_to_verify_mac = False
+                print("1813")
         
 
         if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
                 self.subscribe_for_topic_hashing(client, topicname1)
-                logger.log(logging.WARNING, "The publisher was subscribed to " + topicname1 + " to learn the subscribers who want to subscribe itself." )
+                logger.log(logging.WARNING, "The publisher was subscribed to " + topicname1 + " to learn the   subscribers who want to subscribe itself." )
 
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
                 self.subscribe_for_topic_hashing(client, topicname1)
@@ -3123,10 +3163,7 @@ class MyMQTTClass(mqtt.Client):
                 logger.log(logging.ERROR, "the connection was lost.")
                 return client
         connect_pub_hash_end = time.time()
-
-        logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(connect_pub_hash_end - connect_pub_hash_start,6)))
-        elapsed = connect_pub_hash_end - connect_pub_hash_start
-        #self.writeToFile(time_measured=elapsed)
+        #logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(connect_pub_hash_end - connect_pub_hash_start,6)))
         self.fail_to_verify_mac = False
         stop = False
         return client
@@ -3150,17 +3187,11 @@ class MyMQTTClass(mqtt.Client):
                 #if signVErifyFailed received do not send
                 self.subscribe_encrypted_clientID(client, self.id_client)
                 stop = False
-            while (self.choice_state_dict[topicName] != 2 and self.disconnect_flag == False and  self.fail_to_verify_mac == False):
-                if self.fail_to_verify_mac == True:
-                    logger.log(logging.ERROR, " Bad MAC message received.")
+            while (self.choice_state_dict[topicName] != 2 and self.disconnect_flag == False and stop == False):
                 time.sleep(0.1)
-            if self.fail_to_verify_mac == True:
-                    logger.log(logging.ERROR, " Bad MAC message received.")
-            self.fail_to_verify_mac = False
-            if(self.choice_state_dict[topicName] == 2 ):
-                self.publisher_hash_session_topics[topicName] = self.choiceTokenDictionary[topicName]
-                if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
-                    self.subscribe_for_topic_hashing(client, "newParticipant" )
+            self.publisher_hash_session_topics[topicName] = self.choiceTokenDictionary[topicName]
+            if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
+                self.subscribe_for_topic_hashing(client, "newParticipant" )
 
 
         str_1 = ""
@@ -3170,9 +3201,8 @@ class MyMQTTClass(mqtt.Client):
 
         self.publish_seeds(client, topicNameList) 
         add_to_hash_session_end = time.time()
-        elapsed = add_to_hash_session_end - add_to_hash_session_start
         #logger.log(logging.CRITICAL, "PUBLISH SEEDS RUN TIME: " + str(round(add_to_hash_session_end - add_to_hash_session_start,6)))
-        self.writeToFile2(time_measured=elapsed)
+            
         return client
 
     
@@ -3201,15 +3231,8 @@ class MyMQTTClass(mqtt.Client):
                 #if signVErifyFailed received do not send
                 self.subscribe_encrypted_clientID(client, self.id_client)
                 stop = False
-        while (self.choice_state_dict[topicname2] != 2 and self.disconnect_flag == False and  self.fail_to_verify_mac == False):
-                if self.fail_to_verify_mac == True:
-                    logger.log(logging.ERROR, " Bad MAC message received.")
-                    self.disconnect_flag = True
-                    self.disconnect()
-                    return client
-
+        while (self.choice_state_dict[topicname2] != 2 and self.disconnect_flag == False and stop == False):
                 time.sleep(0.1)
-        self.fail_to_verify_mac = False
 
         self.subscribe_success_topic_hash  = 0
         logger.log(logging.WARNING, "Get the choice token for topic 'newParticipant'.")
@@ -3223,15 +3246,8 @@ class MyMQTTClass(mqtt.Client):
                 #if signVErifyFailed received do not send
                 self.subscribe_encrypted_clientID(client, self.id_client)
                 stop = False
-        while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and  self.fail_to_verify_mac == False):
-                if self.fail_to_verify_mac == True:
-                    logger.log(logging.ERROR, " Bad MAC message received.")
-                    self.disconnect_flag = True
-                    self.disconnect()
-                    return client
-
+        while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and stop == False):
                 time.sleep(0.1)
-        self.fail_to_verify_mac = False
 
         self.subscribe_success_topic_hash = 0
         if (self.choice_state_dict[topicname1] == 2 and self.disconnect_flag == False):
@@ -3261,7 +3277,7 @@ class MyMQTTClass(mqtt.Client):
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return client
-        
+
         self.fail_to_verify_mac = False
         return client
     
@@ -3306,21 +3322,20 @@ class MyMQTTClass(mqtt.Client):
             self.tick_bool = False
             print("here 2573")
         hash_real_publish_end = time.time()
-        elapsed = hash_real_publish_end - hash_real_publish_start
-        #logger.log(logging.CRITICAL, "PUBLISH SEEDS RUN TIME: " + str(round(add_to_hash_session_end - add_to_hash_session_start,6)))
-        self.writeToFile3(time_measured=elapsed)
         #logger.log(logging.CRITICAL, "HASH TOPIC PUBLISH RUN TIME: " + str(round(hash_real_publish_end - hash_real_publish_start,6)))
         return client
     
     async def hash_session_real_subscribers(self, client, topic_list):   #used by subscriber
-        
+        logger.log(logging.WARNING,"Topic List from GUI:")
+        logger.log(logging.WARNING, topic_list)
         hash_real_subscriber_start = time.time()
         if(self.tick_come == False):
             for topic in topic_list:
+                logger.log(logging.WARNING,"topic:" + topic)
                 topic_name_index = topic.index(":")
                 topicname = topic[topic_name_index+2:]
                 topicname = topicname.strip()
-                logger.log(logging.WARNING,"Topic Name:" + topicname)
+                logger.log(logging.WARNING,"topicname:" + topicname)
                 if (self.disconnect_flag == False):
                     self.choice_state_dict[topicname] = 0
                     self.publishForChoiceToken(client,topicname)
@@ -3333,20 +3348,21 @@ class MyMQTTClass(mqtt.Client):
                         stop = False
                 while (self.choice_state_dict[topicname] != 2 and self.disconnect_flag == False and stop == False):
                         time.sleep(0.1)
-                
+                logger.log(logging.WARNING,self.choice_state_dict)
         
             for topic in topic_list:
-                
+                logger.log(logging.WARNING,"topic:" + topic)
                 topic_name_index = topic.index(":")
                 topicname = topic[topic_name_index+2:]
                 topicname = topicname.strip()
-                logger.log(logging.WARNING,"Topic Name:" + topicname)
+                logger.log(logging.WARNING,"topicname:" + topicname)
                 hash = self.topic_hash_dictionary[topicname]
                 seed = self.seed_dictionary[topicname]
                 self.topic_subscribe_boolean[topicname] = True
-                
-                
-                
+                logger.log(logging.WARNING,"topic:" + topicname)
+                logger.log(logging.WARNING,"seed:" + seed)
+                logger.log(logging.WARNING,"hash:" + hash)
+                logger.log(logging.WARNING,self.choice_state_dict)
 
                 if (self.choice_state_dict[topicname] == 2 and self.disconnect_flag == False):
                     self.real_topic_hash_subscribe(client,topicname)
@@ -3374,9 +3390,7 @@ class MyMQTTClass(mqtt.Client):
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return self
-        
         hash_unsub_start = time.time()
-
         self.unsub_success = False
         strconcat = ""
         hash_list = []
@@ -3414,7 +3428,6 @@ class MyMQTTClass(mqtt.Client):
 
         self.received_badmac_unsub = False
         self.fail_to_verify_mac = False
-
         hash_unsub_end = time.time()
         #logger.log(logging.CRITICAL, "HASH UNSUBSCRIBE RUN TIME: " + str(round(hash_unsub_end - hash_unsub_start,6)))
 
