@@ -59,12 +59,21 @@ class MyMQTTClass(mqtt.Client):
         logger.log(logging.INFO, "Connection failed")
 
     def on_message(self, mqttc, obj, msg):
+
+        time_start = time.time()
+
         #print("PUBLISH message received, topic: " + msg.topic+", QOS:"+str(msg.qos)+", Payload:"+str(msg.payload))
         #logger.log(logging.INFO, b'PUBLISH message received, topic: ' + msg.topic +  b' Payload:' + msg.payload)
         print("PUBLISH message received " + msg.topic+" "+str(msg.qos)+" "+str(msg.payload))
         logger.log(logging.INFO, "----Publish message was received from broker")
         logger.log(logging.INFO, b'payload: ' + msg.payload)
         logger.log(logging.INFO, 'topic: ' + msg.topic )
+
+        time_end = time.time()
+        time_measured = str(round(time_end - time_start,12))
+        #self.writeToFile(time_measured=time_measured)
+
+        logger.log(logging.CRITICAL, "PUBLISH RECEIVED TOTAL TIME: " + str(time_measured))
 
     def on_publish(self, mqttc, obj, mid):
         #print("PUBLISH message sent, message id: " + str(mid))
@@ -148,8 +157,7 @@ class MyMQTTClass(mqtt.Client):
 
         end_time = time.time()
         time_measured = str(round(end_time - start_time,12))
-
-
+        self.writeToFile(time_measured=time_measured)
         logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(end_time - start_time,12)))
 
 
@@ -180,13 +188,15 @@ class MyMQTTClass(mqtt.Client):
 
         end = time.time()
         time_measured = str(round(end - start,6))
-        self.writeToFile(time_measured=time_measured)
+        #self.writeToFile(time_measured=time_measured)
 
         logger.log(logging.CRITICAL, "SUBSCRIBE RUN TIME: " + str(round(end - start,6)))
 
         return client
 
     async def run3(self,client,topicname1, message):
+            
+            run3_start = time.time()
 
             logger.log(logging.INFO,"Topic name received from the gui:"+ topicname1)
             logger.log(logging.INFO, "Message received from the gui:"+ message)
@@ -198,11 +208,22 @@ class MyMQTTClass(mqtt.Client):
                 #client.publish("tvbox/series", "test msg1 off",qos=1)
                 #client.publish("tvbox/series/disneyplus", "test msg1 off",qos=1)
 
+
+            run3_end = time.time()
+            time_measured = str(round(run3_end - run3_start,6))
+            #self.writeToFile(time_measured=time_measured)
+
+            logger.log(logging.CRITICAL, "PUBLISH RUN TIME: " + str(round(run3_end - run3_start,6)))
+
+
             return client
         #client.loop_stop()
 
 
     async def run4(self, client, selected_topics_list):
+
+        run4_start = time.time()
+
         self.unsub_success = False
 
         topicsx1 = ""
@@ -218,6 +239,15 @@ class MyMQTTClass(mqtt.Client):
             client.unsubscribe(topicsx1)
 
         self.unsub_success = True
+
+
+        run4_end = time.time()
+        time_measured = str(round(run4_end - run4_start,6))
+        #self.writeToFile(time_measured=time_measured)
+
+        logger.log(logging.CRITICAL, "UNSUBSCRIBE RUN TIME: " + str(round(run4_end - run4_start,6)))
+
+
         return client
 
 

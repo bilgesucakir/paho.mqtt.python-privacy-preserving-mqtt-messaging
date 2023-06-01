@@ -880,7 +880,7 @@ class MyMQTTClass(mqtt.Client):
         def on_unsubscribe(self, obj, mid):
 
             packet_bytes = client.get_packet_bytes()
-            logger.log(logging.INFO, "Unsuback was received, message Id: " + str(mid))
+            logger.log(logging.INFO, "Unsuback was received, message Id:subscribe4 " + str(mid))
 
             #logger.log(logging.ERROR, "mac " + str(packet_bytes))
 
@@ -912,6 +912,9 @@ class MyMQTTClass(mqtt.Client):
 
     def subscribe4(self, client: mqtt, is_after_publish:bool, is_unsub:bool):
         def on_message(client, userdata, msg):
+
+            receive_publish_time = time.time()
+
             #print("----Publish message was received from broker")
             #print(f"Encrypted payload: `{msg.payload}` from  encrypted topic: `{msg.topic}` ")
             logger.log(logging.INFO, "----Publish message was received from broker")
@@ -1069,7 +1072,12 @@ class MyMQTTClass(mqtt.Client):
                         logger.log(logging.WARNING, b'Message after decryption with choice token: '+ unpadded_message)
                         #print("MESSAGE: " ,unpadded_message, "FROM ", topic_name )
 
+                        publish_receive_time_2 = time.time()
 
+                        time_measured = str(round(publish_receive_time_2 - receive_publish_time,6))
+                        #self.writeToFile(time_measured=time_measured)
+
+                        logger.log(logging.CRITICAL, "PUBLISH RECEIVED DECRYPT TOTAL TIME: " + str(round(publish_receive_time_2 - receive_publish_time,6)))
 
                     else:
                         #print("The content of the payload is changed, Mac of the payload is not correct")
@@ -1391,6 +1399,7 @@ class MyMQTTClass(mqtt.Client):
 
         logger.log(logging.INFO, "Unsubscribe List : "+ encrypted_hex)
         return return_list
+    
     
 
     def subscribe_for_topic_hashing(self, client: mqtt, topicname):
@@ -2626,7 +2635,7 @@ class MyMQTTClass(mqtt.Client):
     
    
     def writeToFile(self, time_measured):
-        file_path = "connect.txt"
+        file_path = "runs.txt"
         file = open(file_path, "a")
 
         # Write data to the file
@@ -2778,14 +2787,14 @@ class MyMQTTClass(mqtt.Client):
             #logger.log(logging.CRITICAL, "CONNECT RUN TIME: " + str(round(run1_end - run1_start,6)))
             time_measured = str(round(run1_end - run1_start,6))
             self.writeToFile(time_measured=time_measured)
+
+
             if (self.authenticated == True):
                 return client
             else:
                 self.disconnect_flag = True
                 self.disconnect()
                 return -1
-       
-            
       
 
     async def run2(self,client,topicname_list):
@@ -2841,8 +2850,14 @@ class MyMQTTClass(mqtt.Client):
 
         #modification
         self.unverified_suback_topics_list = list_failed_suback
+
+
         run2_end = time.time()
         logger.log(logging.CRITICAL, "SUBSCRIBE RUN TIME: " + str(round(run2_end - run2_start,6)))
+        time_measured = str(round(run2_end - run2_start,6))
+        #self.writeToFile(time_measured=time_measured)
+
+
         if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
             self.subscribe4(client, False, False)
 
@@ -2916,7 +2931,9 @@ class MyMQTTClass(mqtt.Client):
             #print("Message received from the gui:", message)
             logger.log(logging.INFO,"Topic name received from the gui:"+ topicname1)
             logger.log(logging.INFO, "Message received from the gui:"+ message)
+
             run3_start = time.time()
+
             if (self.disconnect_flag == False):
                 self.choice_state_dict[topicname1] = 0
                 self.publishForChoiceToken(client,topicname1)
@@ -2936,7 +2953,7 @@ class MyMQTTClass(mqtt.Client):
                 self.publish_real_topics(client, topicname1, message)
 
             run3_end = time.time()
-            #logger.log(logging.CRITICAL, "PUBLISH RUN TIME: " + str(round(run3_end - run3_start,6)))
+            logger.log(logging.CRITICAL, "PUBLISH RUN TIME: " + str(round(run3_end - run3_start,6)))
             if (self.disconnect_flag == False and self.fail_to_verify_mac == False) :
                 self.subscribe4(client, True, False)
 
@@ -2950,6 +2967,7 @@ class MyMQTTClass(mqtt.Client):
        
 
     async def run4(self, client, selected_topics_list):
+
         if (self.disconnect_flag == True):
             logger.log(logging.ERROR, "the connection was lost.")
             return self
@@ -2971,7 +2989,7 @@ class MyMQTTClass(mqtt.Client):
 
         if self.disconnect_flag == False and len(send_to_unsub_list) > 0:
             client.unsubscribe(send_to_unsub_list)
-            logger.log(logging.INFO, "Unsubscribe to: "+ str(send_to_unsub_list))
+            logger.log(logging.INFO, "Unsubsrcibe to: "+ send_to_unsub_list)
 
         if self.disconnect_flag == False:
             bool_false = False
@@ -2987,7 +3005,7 @@ class MyMQTTClass(mqtt.Client):
             time.sleep(0.1)
 
         run4_end = time.time()
-        #logger.log(logging.CRITICAL, "UNSUBSCRIBE RUN TIME: " + str(round(run4_end - run4_start,6)))
+        logger.log(logging.CRITICAL, "UNSUBSCRIBE RUN TIME: " + str(round(run4_end - run4_start,6)))
         if self.received_badmac_unsub == False:
             self.unsub_success = True
 

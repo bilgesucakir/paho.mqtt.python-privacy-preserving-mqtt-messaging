@@ -235,6 +235,8 @@ class MyWindowMqtt:
     def selected_items(self) -> list:
         return_list = []
 
+        self.listbox.select_set(0, tk.END) #for sleecting all the topics
+
         for index in self.listbox.curselection():
             return_list.append(str(self.listbox.get(index)))
 
