@@ -27,6 +27,7 @@ class TopicHashingSubscriberWindow:
     def __init__(self, base, mqttc):
         self.mqttc = mqttc
         self.client = None
+        self.base = base
 
         self.btn11 = tk.Button(base, text="Connect",width=10, command = self.client_run1,state=NORMAL)
         self.btn11.place(x=10,y=10)
@@ -93,11 +94,12 @@ class TopicHashingSubscriberWindow:
 
 
     def client_run1(self):
-        if(self.mqttc.disconnect_flag == True):
-            self.base.quit()
+      
 
         self.btn11['state'] = DISABLED
         client = asyncio.run(self.mqttc.connection_for_topic_hashing_subscriber())
+        if(self.mqttc.disconnect_flag == True):
+            self.base.quit()
         print("---- rc = asyncio.run(mqttc.run1()) , rc :",client)
         self.client = client
         self.btn21['state'] = NORMAL

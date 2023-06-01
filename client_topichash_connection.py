@@ -539,6 +539,7 @@ class MyMQTTClass(mqtt.Client):
             #messagex = topicname1x + self.id_client + str(qos)+ str(retainFlag)  #for error cases
             #print("messagex:", messagex )
             message_byte = force_bytes(messagex)
+            logger.log(logging.INFO, b'Message bytes: '+ message_byte)
 
 
 
@@ -560,6 +561,7 @@ class MyMQTTClass(mqtt.Client):
 
 
             payload = topicWanted + b'::::' + signature
+            logger.log(logging.INFO, b'Payload: '+ payload)
             encryptor = Cipher(algorithms.AES(self.session_key), modes.ECB(), backend).encryptor()
             padder = padding2.PKCS7(algorithms.AES(self.session_key).block_size).padder()
             padded_data = padder.update(payload) + padder.finalize()
@@ -3070,19 +3072,8 @@ class MyMQTTClass(mqtt.Client):
                 #if signVErifyFailed received do not send
                 self.subscribe_encrypted_clientID(client, self.id_client)
                 stop = False
-        logger.log(logging.ERROR, "3073")
-        logger.log(logging.ERROR, self.choice_state_dict[topicname_hashing])
-        logger.log(logging.ERROR, self.disconnect_flag)
-        logger.log(logging.ERROR, self.fail_to_verify_mac)
+   
         while (self.choice_state_dict[topicname_hashing] != 2 and self.disconnect_flag == False and  self.fail_to_verify_mac == False):
-                logger.log(logging.ERROR, 3078)
-                if self.fail_to_verify_mac == True:
-                    logger.log(logging.ERROR, 3079)
-                    logger.log(logging.ERROR, " Bad MAC message received.")
-                    self.disconnect_flag = True
-                    self.disconnect()
-                    return client
-
                 time.sleep(0.1)
         
         if self.fail_to_verify_mac == True:
@@ -3091,10 +3082,7 @@ class MyMQTTClass(mqtt.Client):
                 self.disconnect_flag = True
                 self.disconnect()
                 return client
-        logger.log(logging.ERROR, self.choice_state_dict[topicname_hashing])
-        logger.log(logging.ERROR, self.disconnect_flag)
-        logger.log(logging.ERROR, self.fail_to_verify_mac)
-        logger.log(logging.ERROR, " 3083.")
+
         self.fail_to_verify_mac = False
         
         
@@ -3113,12 +3101,6 @@ class MyMQTTClass(mqtt.Client):
 
         stop = False
         while (self.choice_state_dict[topicname1] != 2 and self.disconnect_flag == False and  self.fail_to_verify_mac == False):
-                if self.fail_to_verify_mac == True:
-                    logger.log(logging.ERROR, " Bad MAC message received.")
-                    self.disconnect_flag = True
-                    self.disconnect()
-                    return client
-
                 time.sleep(0.1)
         if self.fail_to_verify_mac == True:
                 logger.log(logging.ERROR, 3079)
@@ -3170,6 +3152,8 @@ class MyMQTTClass(mqtt.Client):
                 if self.fail_to_verify_mac == True:
                     logger.log(logging.ERROR, " Bad MAC message received.")
                 time.sleep(0.1)
+            if self.fail_to_verify_mac == True:
+                    logger.log(logging.ERROR, " Bad MAC message received.")
             self.fail_to_verify_mac = False
             if(self.choice_state_dict[topicName] == 2 ):
                 self.publisher_hash_session_topics[topicName] = self.choiceTokenDictionary[topicName]
